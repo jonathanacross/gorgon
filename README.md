@@ -1,0 +1,2 @@
+# gorgon
+Go playing program

@@ -1,2 +1,2 @@
 # gorgon
-Go playing program
+A Go playing program

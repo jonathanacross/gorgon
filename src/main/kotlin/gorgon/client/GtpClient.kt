@@ -1,5 +1,8 @@
 package gorgon.client
 
+import gorgon.gobase.Game
+import gorgon.gobase.Location
+import gorgon.gobase.Player
 import kotlin.system.exitProcess
 
 fun interface GtpCommand {
@@ -26,8 +29,10 @@ class GtpClient {
     companion object {
         var size = 19
         var komi = 0.0
+        var game = Game(size, komi)
 
         val commands: Map<String, GtpCommand> = mapOf(
+            // core commands
             "name" to DoName,
             "version" to DoVersion,
             "protocol_version" to DoProtocolVersion,
@@ -39,7 +44,10 @@ class GtpClient {
             "genmove" to DoGenMove,
             "play" to DoPlay,
             "quit" to DoQuit,
-            "final_score" to DoFinalScore
+            "final_score" to DoFinalScore,
+            // analysis commands
+            "gogui-analyze_commands" to DoAnalyzeCommands,
+            "showboard" to DoShowBoard,
         )
 
         object DoName : GtpCommand {
@@ -68,6 +76,7 @@ class GtpClient {
 
         object DoClearBoard : GtpCommand {
             override fun apply(args: List<String>): String {
+                game = Game(size, komi)
                 return ""
             }
         }
@@ -77,6 +86,7 @@ class GtpClient {
                 val attemptSize = args[1].toInt()
                 return if (1 <= attemptSize && attemptSize <= 19) {
                     size = attemptSize
+                    game = Game(size, komi)
                     ""
                 } else {
                     "unacceptable size"
@@ -86,6 +96,7 @@ class GtpClient {
 
         object DoUndo : GtpCommand {
             override fun apply(args: List<String>): String {
+                game.undoMove()
                 return ""
             }
         }
@@ -99,6 +110,7 @@ class GtpClient {
         object DoSetKomi : GtpCommand {
             override fun apply(args: List<String>): String {
                 komi = args[1].toDouble()
+                game.komi = komi
                 return ""
             }
         }
@@ -111,7 +123,10 @@ class GtpClient {
 
         object DoPlay : GtpCommand {
             override fun apply(args: List<String>): String {
-                return "pass"
+                val p = Player.parsePlayerString(args[1])
+                val loc = Location.stringToIdx(args[2])
+                game.playMove(p, loc)
+                return ""
             }
         }
 
@@ -126,5 +141,19 @@ class GtpClient {
                 return "unknown command"
             }
         }
+
+        // ----------- analysis commands (standard commands that gogui handles)
+        object DoAnalyzeCommands: GtpCommand {
+            override fun apply(args: List<String>): String  {
+                return listOf( "string/ShowBoard/showboard").joinToString("\n")
+            }
+        }
+
+        object DoShowBoard : GtpCommand {
+            override fun apply(args: List<String>) : String{
+                return game.currBoard().toString()
+            }
+        }
+
     }
 }

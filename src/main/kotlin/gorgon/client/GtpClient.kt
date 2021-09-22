@@ -1,6 +1,7 @@
 package gorgon.client
 
 import gorgon.gobase.Game
+import gorgon.gobase.GoBoard
 import gorgon.gobase.Location
 import gorgon.gobase.Player
 import kotlin.system.exitProcess
@@ -51,27 +52,19 @@ class GtpClient {
         )
 
         object DoName : GtpCommand {
-            override fun apply(args: List<String>): String {
-                return "gorgon"
-            }
+            override fun apply(args: List<String>) = "gorgon"
         }
 
         object DoVersion : GtpCommand {
-            override fun apply(args: List<String>): String {
-                return "0.0.0"
-            }
+            override fun apply(args: List<String>) = "0.0.0"
         }
 
         object DoProtocolVersion : GtpCommand {
-            override fun apply(args: List<String>): String {
-                return "2"
-            }
+            override fun apply(args: List<String>) = "2"
         }
 
         object DoListCommands : GtpCommand {
-            override fun apply(args: List<String>): String {
-                return commands.keys.joinToString("\n")
-            }
+            override fun apply(args: List<String>) = commands.keys.joinToString("\n")
         }
 
         object DoClearBoard : GtpCommand {
@@ -84,7 +77,7 @@ class GtpClient {
         object DoBoardSize : GtpCommand {
             override fun apply(args: List<String>): String {
                 val attemptSize = args[1].toInt()
-                return if (1 <= attemptSize && attemptSize <= 19) {
+                return if (GoBoard.minSize <= attemptSize && attemptSize <= GoBoard.maxSize) {
                     size = attemptSize
                     game = Game(size, komi)
                     ""
@@ -116,9 +109,7 @@ class GtpClient {
         }
 
         object DoQuit : GtpCommand {
-            override fun apply(args: List<String>): String {
-                return ""
-            }
+            override fun apply(args: List<String>) = ""
         }
 
         object DoPlay : GtpCommand {
@@ -137,23 +128,18 @@ class GtpClient {
         }
 
         object DoUnknown : GtpCommand {
-            override fun apply(args: List<String>): String {
-                return "unknown command"
-            }
+            override fun apply(args: List<String>) = "unknown command"
         }
 
         // ----------- analysis commands (standard commands that gogui handles)
-        object DoAnalyzeCommands: GtpCommand {
-            override fun apply(args: List<String>): String  {
-                return listOf( "string/ShowBoard/showboard").joinToString("\n")
+        object DoAnalyzeCommands : GtpCommand {
+            override fun apply(args: List<String>): String {
+                return listOf("string/ShowBoard/showboard").joinToString("\n")
             }
         }
 
         object DoShowBoard : GtpCommand {
-            override fun apply(args: List<String>) : String{
-                return game.currBoard().toString()
-            }
+            override fun apply(args: List<String>) = game.currBoard().toString()
         }
-
     }
 }

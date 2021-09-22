@@ -31,44 +31,51 @@ data class GoBoard(
         } else {
             val value = SquareType.playerToSquareType(player)
             // TODO: handle captures and ko
-            val newdata = data.clone()
-            newdata[idx] = value
+            val newData = data.clone()
+            newData[idx] = value
             val koLocation = noKo
 
-            return GoBoard(size, newdata, koLocation, blackStonesTaken, whiteStonesTaken, boardSquares = this.boardSquares)
+            return GoBoard(
+                size,
+                newData,
+                koLocation,
+                blackStonesTaken,
+                whiteStonesTaken,
+                boardSquares = this.boardSquares
+            )
         }
     }
 
 
     override fun toString(): String {
-        val allcolnames = "ABCDEFGHJKLMNOPQRSTUVWXYZ"
+        val allColNames = "ABCDEFGHJKLMNOPQRSTUVWXYZ"
         val sb = StringBuilder()
 
-        val colnames = allcolnames.substring(0, size).split("").joinToString(" ")
+        val colNames = allColNames.substring(0, size).split("").joinToString(" ")
         // top border
         sb.append("\n")
-        sb.append("  " + colnames + "\n")
+        sb.append("  " + colNames + "\n")
 
         // main board
         for (r in size downTo 1) {
-            val rowname = "%2d".format(r)
-            sb.append(rowname + " ")
+            val rowName = "%2d".format(r)
+            sb.append(rowName + " ")
             for (c in 1..size) {
                 sb.append(SquareType.printForm(data[Location.rowColToIdx(r, c)]) + " ")
             }
-            sb.append(rowname + "\n")
+            sb.append(rowName + "\n")
         }
 
         // bottom border
-        sb.append("  " + colnames)
+        sb.append("  " + colNames)
 
         return sb.toString()
     }
 
     companion object {
-        val minSize = 1
-        val maxSize = Location.maxBoardSize
-        val noKo = -1
+        const val minSize = Location.minBoardSize
+        const val maxSize = Location.maxBoardSize
+        const val noKo = -1
 
         fun emptyBoard(size: Int): GoBoard {
             require((size >= minSize) && (size <= maxSize))

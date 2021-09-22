@@ -1,11 +1,12 @@
 package gorgon.gobase
 
-import java.util.ArrayDeque
+import java.util.*
 
 
 // State for the GTP client
 class Game(val size: Int = 19, var komi: Double = 0.0) {
     private val states = ArrayDeque<GameState>()
+
     init {
         newGame()
     }
@@ -18,6 +19,7 @@ class Game(val size: Int = 19, var komi: Double = 0.0) {
     fun currState(): GameState {
         return states.peek()
     }
+
     fun currBoard(): GoBoard {
         return currState().board
     }

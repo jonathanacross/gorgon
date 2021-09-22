@@ -19,10 +19,11 @@ package gorgon.gobase
 //
 // We indicate "pass" as the special location -1.
 object Location {
-    val maxBoardSize = 19
-    val numLocs = (maxBoardSize + 1) * (maxBoardSize + 2) + 1
-    val pass = -1
-    val undefined = -99
+    const val minBoardSize = 1
+    const val maxBoardSize = 19
+    const val numLocs = (maxBoardSize + 1) * (maxBoardSize + 2) + 1
+    const val pass = -1
+    const val undefined = -99
 
     private val colNames = "ABCDEFGHJKLMNOPQRSTUVWXYZ".toCharArray().toList()
 
@@ -39,7 +40,7 @@ object Location {
 
     fun stringToIdx(locString: String): Int {
         return if (locString.toLowerCase() == "pass")
-            Location.pass
+            pass
         else {
             val colChar = locString[0].toUpperCase()
             val col = colNames.indexOf(colChar) + 1
@@ -50,15 +51,19 @@ object Location {
     }
 
     fun idxToString(index: Int): String {
-        return if (index == Location.undefined) {
-            "undefined"
-        } else if (index == Location.pass) {
-            "pass"
-        } else {
-            val row = index / (maxBoardSize + 1)
-            val col = index % (maxBoardSize + 1)
-            val locString = colNames[col - 1] + row.toString()
-            locString
+        return when (index) {
+            undefined -> {
+                "undefined"
+            }
+            pass -> {
+                "pass"
+            }
+            else -> {
+                val row = index / (maxBoardSize + 1)
+                val col = index % (maxBoardSize + 1)
+                val locString = colNames[col - 1] + row.toString()
+                locString
+            }
         }
     }
 
@@ -66,17 +71,17 @@ object Location {
     fun down(idx: Int) = idx - maxBoardSize - 1
     fun left(idx: Int) = idx - 1
     fun right(idx: Int) = idx + 1
-    fun NE(idx: Int) = idx + maxBoardSize + 2
-    fun SE(idx: Int) = idx - maxBoardSize
-    fun SW(idx: Int) = idx - maxBoardSize - 2
-    fun NW(idx: Int) = idx + maxBoardSize
+    fun northEast(idx: Int) = idx + maxBoardSize + 2
+    fun southEast(idx: Int) = idx - maxBoardSize
+    fun southWest(idx: Int) = idx - maxBoardSize - 2
+    fun northWest(idx: Int) = idx + maxBoardSize
 
-    val up = maxBoardSize + 1
-    val down = -maxBoardSize - 1
-    val left = -1
-    val right = 1
-    val NE = maxBoardSize + 2
-    val SE = -maxBoardSize
-    val SW = -maxBoardSize - 2
-    val NW = maxBoardSize
+    const val up = maxBoardSize + 1
+    const val down = -maxBoardSize - 1
+    const val left = -1
+    const val right = 1
+    const val northEast = maxBoardSize + 2
+    const val southEast = -maxBoardSize
+    const val northWest = -maxBoardSize - 2
+    const val southWest = maxBoardSize
 }

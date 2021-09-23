@@ -10,7 +10,7 @@ fun interface GtpCommand {
     fun apply(args: List<String>): String
 }
 
-// Go Client for the Go Text Protocol
+// Go client for the Go Text Protocol
 // See http://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
 class GtpClient {
 

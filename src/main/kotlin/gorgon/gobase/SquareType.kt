@@ -32,6 +32,4 @@ object SquareType {
             Player.Black -> Black
         }
     }
-
-    const val numSquareTypes = 4
 }

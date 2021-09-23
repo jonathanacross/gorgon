@@ -4,14 +4,14 @@ import java.util.*
 
 
 // State for the GTP client
-class Game(val size: Int = 19, var komi: Double = 0.0) {
+class Game(private val size: Int = 19, var komi: Double = 0.0) {
     private val states = ArrayDeque<GameState>()
 
     init {
         newGame()
     }
 
-    fun newGame() {
+    private fun newGame() {
         states.clear()
         states.push(GameState.newGame(size))
     }

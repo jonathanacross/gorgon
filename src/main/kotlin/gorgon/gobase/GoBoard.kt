@@ -31,18 +31,19 @@ data class GoBoard(
             return GoBoard(size, data.clone())
         } else {
             val value = SquareType.playerToSquareType(player)
-            // TODO: handle captures and ko
+            val capturedStones = getCapturedStoneList(value, idx)
+
             val newData = data.clone()
             newData[idx] = value
-            val koLocation = noKo
+            for (stone in capturedStones) {
+                newData[stone] = SquareType.Empty
+            }
 
-            return GoBoard(
-                size,
-                newData,
-                koLocation,
-                blackStonesTaken,
-                whiteStonesTaken
-            )
+            val whiteStonesTaken = if (player == Player.Black) capturedStones.size else 0
+            val blackStonesTaken = if (player == Player.White) capturedStones.size else 0
+            val koLocation = if (capturedStones.size == 1) capturedStones[0] else GoBoard.noKo
+
+            return GoBoard(size, newData, koLocation, blackStonesTaken, whiteStonesTaken)
         }
     }
 

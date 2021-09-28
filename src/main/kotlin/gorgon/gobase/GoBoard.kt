@@ -1,50 +1,50 @@
 package gorgon.gobase
 
 import java.util.*
+import kotlin.math.sqrt
 
+data class PlayResult(
+    val board: GoBoard,
+    val whiteStonesTaken: Int,
+    val blackStonesTaken: Int
+)
+
+// Represents the board and current stones on it.
+// Doesn't include any past board hash positions that
+// would be used in ko/superko checks.
 data class GoBoard(
     val size: Int,
     val data: IntArray,
-    val ko: Int = noKo,
-    val blackStonesTaken: Int = 0,
-    val whiteStonesTaken: Int = 0,
+    val hash: Long
 ) {
-    fun set(value: Int, idx: Int): GoBoard {
-        val newData = data.clone()
-        newData[idx] = value
-        return GoBoard(size, newData)
+    fun clone(): GoBoard {
+        return GoBoard(size, data.clone(), hash)
     }
 
-    fun set(value: Int, squares: List<Int>): GoBoard {
+    fun playMove(player: Player, location: Int): PlayResult {
+        if (location == Location.pass) {
+            return PlayResult(this.clone(), 0, 0)
+        }
+
         val newData = data.clone()
-        for (square in squares) {
-            newData[square] = value
+        var newHash = hash
+
+        val value = SquareType.playerToSquareType(player)
+        val otherValue = SquareType.playerToSquareType(player.other())
+        val capturedStones = getCapturedStoneList(value, location)
+
+        newData[location] = value
+        newHash = newHash xor ZobristHash.getHash(value, location)
+        for (stone in capturedStones) {
+            newData[stone] = SquareType.Empty
+            newHash = newHash xor ZobristHash.getHash(otherValue, stone)
         }
-        return GoBoard(size, newData)
-    }
+        val newBoard = GoBoard(size, newData, newHash)
 
-    fun getIdx(idx: Int): Int = data[idx]
+        val whiteStonesTaken = if (player == Player.Black) capturedStones.size else 0
+        val blackStonesTaken = if (player == Player.White) capturedStones.size else 0
 
-    fun play(player: Player, idx: Int): GoBoard {
-        if (idx < 0) {
-            // pass
-            return GoBoard(size, data.clone())
-        } else {
-            val value = SquareType.playerToSquareType(player)
-            val capturedStones = getCapturedStoneList(value, idx)
-
-            val newData = data.clone()
-            newData[idx] = value
-            for (stone in capturedStones) {
-                newData[stone] = SquareType.Empty
-            }
-
-            val whiteStonesTaken = if (player == Player.Black) capturedStones.size else 0
-            val blackStonesTaken = if (player == Player.White) capturedStones.size else 0
-            val koLocation = if (capturedStones.size == 1) capturedStones[0] else GoBoard.noKo
-
-            return GoBoard(size, newData, koLocation, blackStonesTaken, whiteStonesTaken)
-        }
+        return PlayResult(newBoard, whiteStonesTaken, blackStonesTaken)
     }
 
     override fun toString(): String {
@@ -72,46 +72,22 @@ data class GoBoard(
         return sb.toString()
     }
 
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as GoBoard
-
-        if (size != other.size) return false
-        if (!data.contentEquals(other.data)) return false
-        if (ko != other.ko) return false
-        if (blackStonesTaken != other.blackStonesTaken) return false
-        if (whiteStonesTaken != other.whiteStonesTaken) return false
-
-        return true
-    }
-
     // Returns the set of location indices that are on the board.
     fun boardSquares() = boardSquaresBySize[size]
 
-    fun positionalHash(): Long {
+    private fun positionalHash(): Long {
         var h: Long = 0
         for (i in boardSquares()) {
-            h = h xor ZobristHash.getHash(data[i], i)
+            if (data[i] != SquareType.Empty) {
+                h = h xor ZobristHash.getHash(data[i], i)
+            }
         }
-        h = h xor ZobristHash.getKoHash(ko)
         return h
-    }
-
-    override fun hashCode(): Int {
-        var result = size
-        result = 31 * result + data.contentHashCode()
-        result = 31 * result + ko
-        result = 31 * result + blackStonesTaken
-        result = 31 * result + whiteStonesTaken
-        return result
     }
 
     companion object {
         const val minSize = Location.minBoardSize
         const val maxSize = Location.maxBoardSize
-        const val noKo = 0
         val boardSquaresBySize =
             Array(maxSize + 1) { i -> getBoardSquaresForSize(i) }
 
@@ -134,7 +110,35 @@ data class GoBoard(
             require((size >= minSize) && (size <= maxSize))
 
             val data = getEmptyBoardDataForSize(size)
-            return GoBoard(size, data, noKo)
+            return GoBoard(size, data, 0)
+        }
+
+        // useful for testing.  Characters other than .XO are ignored.
+        fun fromString(boardString: String): GoBoard {
+            val normString = boardString
+                .toLowerCase()
+                .replace("[^xo.]".toRegex(), "")
+            val boardSize = sqrt(normString.length.toDouble()).toInt()
+            val data = getEmptyBoardDataForSize(boardSize)
+            var hash: Long = 0
+            for (row in 0 until boardSize) {
+                for (col in 0 until boardSize) {
+                    val stringIdx = row * boardSize + col
+                    val symbol = normString[stringIdx]
+                    val boardIdx = Location.rowColToIdx(boardSize - row, col + 1)
+                    when (symbol) {
+                        'x' -> {
+                            data[boardIdx] = SquareType.Black
+                            hash = hash xor ZobristHash.getHash(data[boardIdx], boardIdx)
+                        }
+                        'o' -> {
+                            data[boardIdx] = SquareType.White
+                            hash = hash xor ZobristHash.getHash(data[boardIdx], boardIdx)
+                        }
+                    }
+                }
+            }
+            return GoBoard(boardSize, data, hash)
         }
     }
 
@@ -142,11 +146,6 @@ data class GoBoard(
         // square must be empty (duh!)
         if (data[idx] != SquareType.Empty) {
             return false
-        }
-
-        if (idx == ko) {
-            // Only retake a ko if it's a snapback.
-            return getCapturedStoneList(squareType, idx).size > 1
         }
 
         // If there are liberties adjacent to current move, then for sure this
@@ -160,16 +159,23 @@ data class GoBoard(
         }
 
         // Suicide moves are legal only if we make a capture.
-        if (isPotentialSuicide(squareType, idx)) {
-            return getCapturedStoneList(squareType, idx).isNotEmpty()
+        return if (!Options.ALLOW_SUICIDE && isPotentialSuicide(squareType, idx)) {
+            getCapturedStoneList(squareType, idx).isNotEmpty()
         } else {
-            return true
+            true
         }
     }
 
     private fun isPotentialSuicide(value: Int, idx: Int): Boolean {
-        val supposePlay = this.set(value, idx)
-        return supposePlay.isGroupSurrounded(idx)
+        // temporarily place the stone
+        data[idx] = value
+
+        val isSurrounded = isGroupSurrounded(idx)
+
+        // remove the stone
+        data[idx] = SquareType.Empty
+
+        return isSurrounded
     }
 
     fun legalMoves(player: Player): List<Int> {

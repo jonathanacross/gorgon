@@ -14,7 +14,7 @@ class RandomEngine : Engine() {
             // if two passes in a row already, not sure what else to do but pass
             return Location.pass
         } else {
-            val legalMoves = state.board.legalMoves(player)
+            val legalMoves = state.legalMoves(player)
 
             val moveIdx = rng.nextInt(legalMoves.size + 1)
             if (moveIdx == legalMoves.size)

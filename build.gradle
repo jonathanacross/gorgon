@@ -19,3 +19,18 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+sourceSets {
+   main.java.srcDirs += 'src/main/kotlin/'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'gorgon.client.GorgonKt'
+    }
+
+    // Recursively collects and copies all of a project's files
+    // and adds them to the JAR itself.
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+}
+

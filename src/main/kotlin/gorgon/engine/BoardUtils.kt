@@ -49,6 +49,5 @@ class BoardUtils {
                         (otherDiagCount == 0))
             return isEye
         }
-
     }
 }

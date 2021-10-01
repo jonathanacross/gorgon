@@ -75,16 +75,6 @@ data class GoBoard(
     // Returns the set of location indices that are on the board.
     fun boardSquares() = boardSquaresBySize[size]
 
-    private fun positionalHash(): Long {
-        var h: Long = 0
-        for (i in boardSquares()) {
-            if (data[i] != SquareType.Empty) {
-                h = h xor ZobristHash.getHash(data[i], i)
-            }
-        }
-        return h
-    }
-
     companion object {
         const val minSize = Location.minBoardSize
         const val maxSize = Location.maxBoardSize

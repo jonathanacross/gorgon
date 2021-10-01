@@ -9,7 +9,10 @@ abstract class Engine {
 
 class EngineFactory {
     companion object {
-        private val engines = mapOf("random" to RandomEngine())
+        private val engines = mapOf(
+            "random" to RandomEngine(),
+            "noeye" to NoEyeEngine()
+        )
 
         fun newEngine(params: List<String>): Engine {
             val name = params[0]

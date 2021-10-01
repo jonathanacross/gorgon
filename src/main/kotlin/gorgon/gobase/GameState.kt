@@ -54,6 +54,8 @@ data class GameState(
         return "to move: " + playerJustMoved.other() + "\n" + board.toString()
     }
 
+    fun isGameOver(): Boolean = (prevMove == Location.pass && prevPrevMove == Location.pass)
+
     companion object {
         fun newGame(size: Int): GameState {
             val board = GoBoard.emptyBoard(size)

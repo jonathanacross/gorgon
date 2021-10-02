@@ -1,11 +1,23 @@
 package gorgon.client
 
 import gorgon.engine.EngineFactory
-import gorgon.gobase.Game
-import gorgon.gobase.GoBoard
-import gorgon.gobase.Location
-import gorgon.gobase.Player
+import gorgon.gobase.*
 import kotlin.system.exitProcess
+
+sealed class Response {
+    abstract fun success(): Boolean
+    abstract fun text(): String
+
+    data class Success(val text: String) : Response() {
+        override fun success() = true
+        override fun text() = text
+    }
+
+    data class Failure(val text: String) : Response() {
+        override fun success() = false
+        override fun text() = text
+    }
+}
 
 // Go client for the Go Text Protocol
 // See http://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
@@ -34,7 +46,13 @@ class GtpClient(private val engineParams: List<String>) {
     )
 
     fun processCommand(input: String) {
-        val tokens = input.split("\\s+".toRegex())
+        val tokens = input.split("\\s+".toRegex()).toMutableList()
+        // Commands may start with an optional integer id.
+        // If this happens, save it and strip it off.
+        val commandId = tokens[0].toIntOrNull()
+        if (commandId != null) {
+            tokens.removeFirst()
+        }
         val commandStr = tokens[0]
 
         val response =
@@ -57,78 +75,102 @@ class GtpClient(private val engineParams: List<String>) {
                 else -> doUnknown()
             }
 
-        print("= " + response + "\n\n")
+        val prefix = if (response.success()) "=" else "?"
+        val idPart = commandId ?: ""
+        print(prefix + idPart + " " + response.text() + "\n\n")
 
         if (commandStr == "quit") {
             exitProcess(0)
         }
     }
 
-    private fun doName() = "gorgon" + engineParams.joinToString(" ")
+    private fun doName() = Response.Success("gorgon" + engineParams.joinToString(" "))
 
-    private fun doVersion() = "0.0.0"
+    private fun doVersion() = Response.Success("0.0.0")
 
-    private fun doProtocolVersion() = "2"
+    private fun doProtocolVersion() = Response.Success("2")
 
-    private fun doKnownCommand(args: List<String>): String {
-        return if (commands.contains(args[1])) "true" else "false"
+    private fun doKnownCommand(args: List<String>): Response {
+        return if (commands.contains(args[1])) Response.Success("true") else Response.Success("false")
     }
 
-    private fun doListCommands() = commands.joinToString("\n")
+    private fun doListCommands() = Response.Success(commands.joinToString("\n"))
 
-    private fun doClearBoard(): String {
+    private fun doClearBoard(): Response {
         game = Game(size, komi)
-        return ""
+        return Response.Success("")
     }
 
-    private fun doBoardSize(args: List<String>): String {
-        val attemptSize = args[1].toInt()
+    private fun doBoardSize(args: List<String>): Response {
+        val attemptSize =
+            args[1].toIntOrNull() ?: return Response.Failure("couldn't parse board size")
         return if (GoBoard.minSize <= attemptSize && attemptSize <= GoBoard.maxSize) {
             size = attemptSize
             game = Game(size, komi)
-            ""
+            Response.Success("")
         } else {
-            "unacceptable size"
+            Response.Failure("unacceptable size")
         }
     }
 
-    private fun doUndo(): String {
+    private fun doUndo(): Response {
         game.undoMove()
-        return ""
+        return Response.Success("")
     }
 
-    private fun doGenMove(args: List<String>): String {
+    private fun doGenMove(args: List<String>): Response {
         val player = Player.parsePlayerString(args[1])
         val location = engine.suggestMove(player, game.currState(), game.komi)
         game.playMove(player, location)
-        return Location.idxToString(location)
+        return Response.Success(Location.idxToString(location))
     }
 
-    private fun doSetKomi(args: List<String>): String {
-        komi = args[1].toDouble()
-        game.komi = komi
-        return ""
+    private fun doSetKomi(args: List<String>): Response {
+        val parsedKomi = args[1].toDoubleOrNull()
+        return if (parsedKomi == null) {
+            Response.Failure("Couldn't parse komi " + args[1])
+        } else {
+            game.komi = parsedKomi
+            Response.Success("")
+        }
     }
 
-    private fun doQuit() = ""
+    private fun doQuit() = Response.Success("")
 
-    private fun doPlay(args: List<String>): String {
-        val p = Player.parsePlayerString(args[1])
-        val loc = Location.stringToIdx(args[2])
-        game.playMove(p, loc)
-        return ""
+    private fun doPlay(args: List<String>): Response {
+        if (args.size < 3) {
+            return Response.Failure("expected play <player> <location>")
+        }
+        return try {
+            val p = Player.parsePlayerString(args[1])
+            val loc = Location.stringToIdx(args[2])
+            if (!game.currBoard().isLegalMove(SquareType.playerToSquareType(p), loc)) {
+                return Response.Failure("that's not a legal move")
+            }
+            game.playMove(p, loc)
+            Response.Success("")
+        } catch (e: Exception) {
+            Response.Failure("error parsing player or location")
+        }
     }
 
-    private fun doFinalScore(): String {
-        return "0"
+    private fun doFinalScore(): Response {
+        val (b, w) = game.currBoard().score()
+        val score = b - (w + game.komi)
+        val textScore =
+            if (score > 0) "B+" + (score).toString()
+            else if (score < 0) "W+" + (-score).toString()
+            else "0"
+
+        return Response.Success(textScore)
     }
 
-    private fun doUnknown() = "unknown command"
+    private fun doUnknown() = Response.Failure("unknown command")
 
     // ----------- analysis commands (standard commands that gogui handles)
-    private fun doAnalyzeCommands(): String {
-        return listOf("string/ShowBoard/showboard").joinToString("\n")
+    private fun doAnalyzeCommands(): Response {
+        return Response.Success(listOf("string/ShowBoard/showboard").joinToString("\n"))
     }
 
-    private fun doShowBoard() = game.currBoard().toString()
+    private fun doShowBoard() = Response.Success(game.currBoard().toString())
 }

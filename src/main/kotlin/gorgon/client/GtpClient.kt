@@ -84,7 +84,7 @@ class GtpClient(private val engineParams: List<String>) {
         }
     }
 
-    private fun doName() = Response.Success("gorgon" + engineParams.joinToString(" "))
+    private fun doName() = Response.Success("gorgon " + engineParams.joinToString(" "))
 
     private fun doVersion() = Response.Success("0.0.0")
 
@@ -144,6 +144,9 @@ class GtpClient(private val engineParams: List<String>) {
         return try {
             val p = Player.parsePlayerString(args[1])
             val loc = Location.stringToIdx(args[2])
+            if (loc == Location.pass) {
+                return Response.Success("")
+            }
             if (!game.currBoard().isLegalMove(SquareType.playerToSquareType(p), loc)) {
                 return Response.Failure("that's not a legal move")
             }

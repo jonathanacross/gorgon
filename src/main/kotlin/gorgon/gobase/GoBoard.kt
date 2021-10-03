@@ -204,7 +204,7 @@ data class GoBoard(
         return captured.toList()
     }
 
-    private fun neighbors(idx: Int): List<Int> {
+    fun neighbors(idx: Int): List<Int> {
         val allnbrs =
             listOf(Location.left(idx), Location.right(idx), Location.up(idx), Location.down(idx))
         return allnbrs.filter { i -> data[i] != SquareType.OffBoard }
@@ -261,7 +261,7 @@ data class GoBoard(
 
     // flood fill an area that follows a given predicate
     // TODO: more efficient algorithm, possibly http://will.thimbleby.net/scanline-flood-fill/
-    private fun floodfill(startIdx: Int, rule: (Int) -> Boolean): List<Int> {
+    fun floodfill(startIdx: Int, rule: (Int) -> Boolean): List<Int> {
         if (!rule(data[startIdx])) {
             return listOf()
         }

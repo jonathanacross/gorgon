@@ -9,19 +9,26 @@ import kotlin.random.Random
 class RandomEngine : Engine() {
     private val rng = Random
 
-    override fun suggestMove(player: Player, state: GameState, komi: Double): Int {
-        if (state.prevMove == Location.pass && state.prevPrevMove == Location.pass) {
-            // if two passes in a row already, not sure what else to do but pass
-            return Location.pass
-        } else {
-            val legalMoves = state.legalMoves(player)
+    private fun getLegalMoves(player: Player, state: GameState): List<Int> {
+        if (state.isGameOver()) {
+            return listOf()
+        }
+        return state.legalMoves(player)
+    }
 
+    override fun suggestMove(player: Player, state: GameState, komi: Double): Int {
+            val legalMoves = getLegalMoves(player, state)
             val moveIdx = rng.nextInt(legalMoves.size + 1)
-            if (moveIdx == legalMoves.size)
-                return Location.pass // pass with uniform probability
-            else {
-                return legalMoves[moveIdx]
+            return if (moveIdx == legalMoves.size) {
+                Location.pass // pass with uniform probability
+            } else {
+                legalMoves[moveIdx]
             }
         }
+
+    override fun moveProbs(player: Player, state: GameState, komi: Double): List<Pair<Int, Double>>  {
+        val legalMoves = getLegalMoves(player, state)
+        val moveToScore = legalMoves.map { loc -> Pair(loc, 1.0) }
+        return moveToScore
     }
 }

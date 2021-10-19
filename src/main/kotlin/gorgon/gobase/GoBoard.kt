@@ -21,6 +21,18 @@ data class GoBoard(
         return GoBoard(size, data.clone(), hash)
     }
 
+    fun putStone(player: Player, location: Int): GoBoard {
+        val newData = data.clone()
+        var newHash = hash
+
+        val value = SquareType.playerToSquareType(player)
+        newData[location] = value
+        newHash = newHash xor ZobristHash.getHash(value, location)
+        val newBoard = GoBoard(size, newData, newHash)
+
+        return newBoard
+    }
+
     fun playMove(player: Player, location: Int): PlayResult {
         if (location == Location.pass) {
             return PlayResult(this.clone(), 0, 0)

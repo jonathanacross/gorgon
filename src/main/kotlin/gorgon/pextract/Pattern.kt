@@ -1,13 +1,16 @@
 package gorgon.pextract
 
 import gorgon.gobase.GoBoard
+import java.lang.Math.abs
 
-// Handles up to 7x7 patterns
+// Handles up to 7x7 patterns; larger would require more bits
 data class Pattern(
     val size: Int,
     val blackBits: Long,
     val whiteBits: Long
 ) : Comparable<Pattern> {
+    init { require(size == 3 || size == 5 || size == 7) }
+
     fun countMinSketchHash(filterNum: Int): Long {
         // These big constants are picked as NextPrime(RandInt(2^63))
         // Currently we support up to 7 min filter hashes.
@@ -25,7 +28,7 @@ data class Pattern(
         result = result * primes[filterNum] + blackBits
         result = result * primes[filterNum] + whiteBits
 
-        return result
+        return kotlin.math.abs(result)
     }
 
     override fun compareTo(other: Pattern): Int {

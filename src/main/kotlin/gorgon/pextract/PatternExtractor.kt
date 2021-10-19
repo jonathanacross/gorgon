@@ -2,10 +2,30 @@ package gorgon.pextract
 
 import gorgon.gobase.GoBoard
 import gorgon.gobase.Location
+import gorgon.gobase.Player
 import gorgon.gobase.SquareType
 
 private data class PatternBits(var blackBits: Long, var whiteBits: Long) {
-    fun adjustBits(squareType: Int, idx: Int) {
+
+    fun adjustBits(squareType: Int, idx: Int, player: Player) {
+        if (player == Player.Black) {
+            adjustBitsSame(squareType, idx)
+        } else {
+            // reverse colors for white player
+            adjustBitsOpposite(squareType, idx)
+        }
+    }
+
+    private fun adjustBitsOpposite(squareType: Int, idx: Int) {
+        if (squareType == SquareType.White || squareType == SquareType.OffBoard) {
+            blackBits = blackBits or (1L shl idx)
+        }
+        if (squareType == SquareType.Black || squareType == SquareType.OffBoard) {
+            whiteBits = whiteBits or (1L shl idx)
+        }
+    }
+
+    private fun adjustBitsSame(squareType: Int, idx: Int) {
         if (squareType == SquareType.Black || squareType == SquareType.OffBoard) {
             blackBits = blackBits or (1L shl idx)
         }
@@ -19,7 +39,7 @@ class PatternExtractor(val patternSize: Int) {
 
     private val patternOffsets = Pattern.getPatternOffsets(patternSize)
 
-    fun getPatternAt(board: GoBoard, location: Int): Pattern {
+    fun getPatternAt(board: GoBoard, location: Int, player: Player): Pattern {
         val numSymmetries = patternOffsets.size
 
         val patternBits = Array(numSymmetries) { PatternBits(0L, 0L) }
@@ -38,7 +58,7 @@ class PatternExtractor(val patternSize: Int) {
                 }
 
                 for (i in 0 until numSymmetries) {
-                    patternBits[i].adjustBits(value, patternOffsets[i][idx])
+                    patternBits[i].adjustBits(value, patternOffsets[i][idx], player)
                 }
 
                 idx++

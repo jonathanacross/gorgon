@@ -39,6 +39,27 @@ class PatternExtractor(val patternSize: Int) {
 
     private val patternOffsets = Pattern.getPatternOffsets(patternSize)
 
+    fun getSmallestPattern(patterns: List<Pattern>): Pattern {
+        // find the smallest pattern. Equivalent code: though slower:
+        // val smallestPattern = patterns.minOrNull()!!
+        var smallestPattern = patterns[0]
+        var first = true
+        for (pattern in patterns) {
+            if (first) {
+                smallestPattern = pattern
+                first = false
+                continue
+            }
+            if (pattern.blackBits < smallestPattern.blackBits ||
+                (pattern.blackBits == smallestPattern.blackBits &&
+                        pattern.whiteBits <= smallestPattern.whiteBits)
+            ) {
+                smallestPattern = pattern
+            }
+        }
+        return smallestPattern
+    }
+
     fun getPatternAt(board: GoBoard, location: Int, player: Player): Pattern {
         val numSymmetries = patternOffsets.size
 
@@ -66,7 +87,7 @@ class PatternExtractor(val patternSize: Int) {
         }
 
         val patterns = patternBits.map { x -> Pattern(patternSize, x.blackBits, x.whiteBits) }
-        val smallestPattern = patterns.minOrNull()!!
+        val smallestPattern = getSmallestPattern(patterns)
 
         return smallestPattern
     }

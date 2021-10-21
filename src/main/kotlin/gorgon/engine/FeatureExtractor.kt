@@ -1,23 +1,24 @@
 package gorgon.engine
 
-import gorgon.gobase.GoBoard
+import gorgon.gobase.GameState
 import gorgon.gobase.Location
 import gorgon.gobase.Player
 import gorgon.gobase.SquareType
 import kotlin.math.abs
 
-class FeatureExtractor(val board: GoBoard, val player: Player) {
+class FeatureExtractor(val state: GameState, val player: Player) {
     private val capturedStoneCounts = IntArray(Location.numLocs) { 0 }
-    private val influenceData = Array(board.size, { IntArray(board.size) })
+    private val influenceData = Array(state.board.size, { IntArray(state.board.size) })
+    private val saveSelfAtariData: IntArray
 
     init {
         val squareType = SquareType.playerToSquareType(player)
         val otherSquareType = SquareType.opposite(squareType)
-        val allChains = Utils.findChains(board)
+        val allChains = Utils.findChains(state.board)
 
-        val playerChains = allChains.filter { c -> board.data[c.rep] == otherSquareType }
+        val playerChains = allChains.filter { c -> state.board.data[c.rep] == otherSquareType }
         val playerLibertyAndNumStonesInAtari = playerChains
-            .map { c -> Pair(Utils.getLiberties(board, c), c.elements.size) }
+            .map { c -> Pair(Utils.getLiberties(state.board, c), c.elements.size) }
             .filter { x -> x.first.size == 1 }
             .map { x -> Pair(x.first.first(), x.second) }
         for (locAndNumStones in playerLibertyAndNumStonesInAtari) {
@@ -25,9 +26,10 @@ class FeatureExtractor(val board: GoBoard, val player: Player) {
         }
 
         computeInfluence()
+        saveSelfAtariData = computeSaveAtariData()
     }
 
-    fun computeInfluence() {
+    private fun computeInfluence() {
         val influenceConv = arrayOf(
             arrayOf(0, 0, 0, 1, 0, 0, 0),
             arrayOf(0, 1, 2, 5, 2, 1, 0),
@@ -41,20 +43,20 @@ class FeatureExtractor(val board: GoBoard, val player: Player) {
         val squareType = SquareType.playerToSquareType(player)
         val otherSquareType = SquareType.opposite(squareType)
 
-        for (row in 0 until board.size) {
-            for (col in 0 until board.size) {
+        for (row in 0 until state.board.size) {
+            for (col in 0 until state.board.size) {
                 for (dRow in -3..3) {
                     for (dCol in -3..3) {
                         val offsetRow = row + dRow
                         val offsetCol = col + dCol
-                        if (offsetRow < 0 || offsetRow >= board.size ||
-                            offsetCol < 0 || offsetCol >= board.size
+                        if (offsetRow < 0 || offsetRow >= state.board.size ||
+                            offsetCol < 0 || offsetCol >= state.board.size
                         ) {
                             continue
                         }
                         val influence = influenceConv[dRow + 3][dCol + 3]
                         val weight =
-                            when (board.data[Location.rowColToIdx(offsetRow + 1, offsetCol + 1)]) {
+                            when (state.board.data[Location.rowColToIdx(offsetRow + 1, offsetCol + 1)]) {
                                 squareType -> 1
                                 otherSquareType -> -1
                                 else -> 0
@@ -66,13 +68,43 @@ class FeatureExtractor(val board: GoBoard, val player: Player) {
         }
     }
 
+    private fun computeSaveAtariData(): IntArray {
+        val squareType = SquareType.playerToSquareType(player)
+        val allChains = Utils.findChains(state.board)
+
+        // Find places where player has stones in atari, and where to save them.
+        val playerChains = allChains.filter { c -> state.board.data[c.rep] == squareType }
+        val locationsOfLibertiesForStonesInAtari = playerChains
+            .map { c -> Pair(Utils.getLiberties(state.board, c), c.elements.size) }
+            .filter { x -> x.first.size == 1 }
+            .map { x -> x.first.first() }
+
+        val forcedSavingLocations = IntArray(state.board.data.size) { 0 }
+        for (loc in locationsOfLibertiesForStonesInAtari) {
+            val nextBoard = state.board.playMove(player, loc).board
+            val group = nextBoard.floodfill(loc, { x: Int -> x == squareType })
+            val chain = Chain(loc, group)
+            val numLiberties = Utils.getLiberties(nextBoard, chain).size
+            if (numLiberties > 1) {
+                forcedSavingLocations[loc] = 1
+            }
+        }
+
+        return forcedSavingLocations
+    }
+
     fun getCapturedStoneCountsFeature(idx: Int): Int {
         val nStones = capturedStoneCounts[idx]
         return if (nStones < 7) nStones else 7
     }
 
+    // See if we can save some of our stones that are in atari
+    fun getSaveSelfAtari(idx: Int): Int {
+        return saveSelfAtariData[idx]
+    }
+
     fun getSelfAtari(idx: Int): Int {
-        val nextBoard = board.playMove(player, idx).board
+        val nextBoard = state.board.playMove(player, idx).board
         val squareType = SquareType.playerToSquareType(player)
         val group = nextBoard.floodfill(idx, { x: Int -> x == squareType })
         val chain = Chain(idx, group)
@@ -82,8 +114,10 @@ class FeatureExtractor(val board: GoBoard, val player: Player) {
         return if (numLiberties == 1) 1 else 0
     }
 
+    fun getBias(idx: Int): Int = 1
+
     fun getEnemyAtari(idx: Int): Int {
-        val nextBoard = board.playMove(player, idx).board
+        val nextBoard = state.board.playMove(player, idx).board
         val squareType = SquareType.playerToSquareType(player)
         val otherSquareType = SquareType.opposite(squareType)
         var enemyAtariCount = 0
@@ -106,7 +140,20 @@ class FeatureExtractor(val board: GoBoard, val player: Player) {
 
     fun getEmptyEdge(idx: Int): Int {
         val squareType = SquareType.playerToSquareType(player)
-        return if (Utils.isEmptyEdge(squareType, idx, board)) 1 else 0
+        return if (Utils.isEmptyEdge(squareType, idx, state.board)) 1 else 0
+    }
+
+    // uses the distance function Dist(dx, dy) = |dx| + |dy| + max(|dx|, |dy|)
+    fun getDistToLastMove(idx: Int): Int {
+        if (state.prevMove == Location.pass || state.prevMove == Location.undefined) {
+            return 0
+        }
+        val (oldRow, oldCol) = Location.idxToRowCol(state.prevMove)
+        val (row, col) = Location.idxToRowCol(idx)
+        val dx = abs(oldCol - col)
+        val dy = abs(oldRow - row)
+        val dist = dx + dy + maxOf(dx, dy)
+        return minOf(dist, 17)
     }
 
     fun getInfluence(idx: Int): Int {
@@ -127,14 +174,23 @@ class FeatureExtractor(val board: GoBoard, val player: Player) {
     }
 
     // Use for debugging only
-    fun getFeature(featureName: String, loc: Int): Int {
+    fun getFeature(featureName: String, loc: Int, dieIfUnknown: Boolean): Int {
         return when (featureName) {
-            "capturedStonesCount" -> getCapturedStoneCountsFeature(loc)
+            "capturedStoneCount" -> getCapturedStoneCountsFeature(loc)
+            "saveSelfAtari" -> getSaveSelfAtari(loc)
             "selfAtari" -> getSelfAtari(loc)
             "enemyAtari" -> getEnemyAtari(loc)
             "emptyEdge" -> getEmptyEdge(loc)
             "influence" -> getInfluence(loc)
-            else -> 0
+            "distToLastMove" -> getDistToLastMove(loc)
+            "bias" -> getBias(loc)
+            else -> {
+                if (dieIfUnknown) {
+                    throw Exception("tried to get unknown feature '" + featureName + "'")
+                } else {
+                    return 0
+                }
+            }
         }
     }
 }

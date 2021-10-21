@@ -13,7 +13,8 @@ class EngineFactory {
         val engines = mapOf(
             "random" to RandomEngine(),
             "noeye" to NoEyeEngine(),
-            "feature" to FeatureEngine(),
+            "feature" to FeatureEngine("handcrafted_features.tsv"),
+            "experimental" to FeatureEngine("experimental_features.tsv"),
         )
 
         fun newEngine(params: List<String>): Engine {

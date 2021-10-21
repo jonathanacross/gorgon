@@ -5,26 +5,33 @@ import gorgon.gobase.Location
 import gorgon.gobase.Player
 import kotlin.random.Random
 
-class FeatureEngine() : Engine() {
+class FeatureEngine(featureFileName: String) : Engine() {
     private val rng = Random
+    private val featureWeights = FeatureWeightReader.readFeatureWeightFile(featureFileName)
 
     private fun scoreLocation(
         loc: Int,
         extractor: FeatureExtractor,
         jitterValues: Boolean
     ): Double {
-        // later, optimize the combination of features
-        var score = (
-                1.0 * extractor.getCapturedStoneCountsFeature(loc).toDouble()
-                        - 0.7 * extractor.getSelfAtari(loc).toDouble()
-                        + 0.7 * extractor.getEnemyAtari(loc).toDouble()
-                        - 0.3 * extractor.getEmptyEdge(loc).toDouble()
-                        + 0.025 * extractor.getInfluence(loc).toDouble()
-                )
+        var score = 0.0
+        for (featureWeight in featureWeights) {
+            val value = extractor.getFeature(featureWeight.name, loc, true)
+            if (value == 0) {
+                // 0 is the 'default' value with assumed 0 weight
+                continue
+            }
+            val weight = featureWeight.weights[value]
+            if (weight == null) {
+                throw Exception("no weight specified for feature " + featureWeight.name + " with value " + value)
+            } else {
+                score += weight
+            }
+        }
         if (jitterValues) {
-            // jitter the values, so we don't always pick the same square if
-            // scores are the same
-            val jitter = rng.nextDouble() * 0.0001
+            // Jitter the values, so we don't always pick the same square if
+            // scores are the same.
+            val jitter = rng.nextDouble() * 0.00001
             score += jitter
         }
         return score
@@ -37,7 +44,7 @@ class FeatureEngine() : Engine() {
             return nonBadMoves[0]
         }
 
-        val extractor = FeatureExtractor(state.board, player)
+        val extractor = FeatureExtractor(state, player)
         val moveToScore = nonBadMoves.map { loc -> Pair(loc, scoreLocation(loc, extractor, true)) }
 
         val best = moveToScore.maxByOrNull { x -> x.second }
@@ -55,7 +62,7 @@ class FeatureEngine() : Engine() {
             return listOf()
         }
 
-        val extractor = FeatureExtractor(state.board, player)
+        val extractor = FeatureExtractor(state, player)
         val moveToScore = nonBadMoves.map { loc ->
             Pair(
                 loc,

@@ -112,7 +112,6 @@ class Utils {
             return atariStones
         }
 
-
         fun getConnectedGroups(board: GoBoard): DisjointSet {
             val chains = DisjointSet(board.data.size)
             for (idx in board.boardSquares()) {

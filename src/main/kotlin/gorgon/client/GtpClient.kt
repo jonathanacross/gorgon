@@ -237,9 +237,9 @@ class GtpClient(private val engineParams: List<String>) {
             return listOf()
         }
 
-        val extractor = FeatureExtractor(game.currState().board, player)
+        val extractor = FeatureExtractor(game.currState(), player)
         val locScores = nonBadMoves.map { loc ->
-            Pair(loc, extractor.getFeature(feature, loc).toDouble())
+            Pair(loc, extractor.getFeature(feature, loc, false).toDouble())
             //Pair(loc, Utils.sigmoid(extractor.getFeature(feature, loc).toDouble()))
         }
         val scores = locScores.map { x -> x.second }

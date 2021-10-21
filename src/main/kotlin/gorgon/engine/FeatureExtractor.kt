@@ -114,8 +114,6 @@ class FeatureExtractor(val state: GameState, val player: Player) {
         return if (numLiberties == 1) 1 else 0
     }
 
-    fun getBias(idx: Int): Int = 1
-
     fun getEnemyAtari(idx: Int): Int {
         val nextBoard = state.board.playMove(player, idx).board
         val squareType = SquareType.playerToSquareType(player)
@@ -183,7 +181,6 @@ class FeatureExtractor(val state: GameState, val player: Player) {
             "emptyEdge" -> getEmptyEdge(loc)
             "influence" -> getInfluence(loc)
             "distToLastMove" -> getDistToLastMove(loc)
-            "bias" -> getBias(loc)
             else -> {
                 if (dieIfUnknown) {
                     throw Exception("tried to get unknown feature '" + featureName + "'")

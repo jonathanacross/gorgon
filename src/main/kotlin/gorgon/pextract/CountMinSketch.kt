@@ -3,7 +3,7 @@ package gorgon.pextract
 import kotlin.math.min
 
 class CountMinSketch {
-    private val numHashes = 5
+    private val numHashes = 7
     private val hashSize = 200003
     private val lookupMaps = Array(numHashes, { IntArray(hashSize) })
 

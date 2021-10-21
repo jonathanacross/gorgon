@@ -1,5 +1,4 @@
 #feat name	feat value	weight	pattern hash	comments
-bias	1	0.0
 saveSelfAtari	1	1.5
 capturedStoneCount	1	1.0
 capturedStoneCount	2	2.0

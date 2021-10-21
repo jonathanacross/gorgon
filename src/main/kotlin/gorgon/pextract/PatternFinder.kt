@@ -55,10 +55,10 @@ fun readGames(dir: String): List<PlayedGame> {
 
 fun main(args: Array<String>) {
     // These could be made into arguments.
-    val patternSize = 3
+    val patternSize = 5
     val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Honinbo/"
-    val outputFile = "/home/jonathan/Development/gorgon/data/patterns_3_list.txt"
+    val outputFile = "/home/jonathan/Development/gorgon/data/patterns_5_list.txt"
 
 
     val extractor = PatternExtractor(patternSize)

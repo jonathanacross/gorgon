@@ -3,11 +3,13 @@ package gorgon.engine
 import gorgon.gobase.GameState
 import gorgon.gobase.Location
 import gorgon.gobase.Player
+import gorgon.pextract.Pattern
 import kotlin.random.Random
 
 class FeatureEngine(featureFileName: String) : Engine() {
     private val rng = Random
     private val featureWeights = FeatureWeightReader.readFeatureWeightFile(featureFileName)
+    private val patterns: Map<Pattern, Int> = PatternReader.readPatternFile()
 
     private fun scoreLocation(
         loc: Int,
@@ -44,7 +46,7 @@ class FeatureEngine(featureFileName: String) : Engine() {
             return nonBadMoves[0]
         }
 
-        val extractor = FeatureExtractor(state, player)
+        val extractor = FeatureExtractor(state, player, patterns)
         val moveToScore = nonBadMoves.map { loc -> Pair(loc, scoreLocation(loc, extractor, true)) }
 
         val best = moveToScore.maxByOrNull { x -> x.second }
@@ -62,7 +64,7 @@ class FeatureEngine(featureFileName: String) : Engine() {
             return listOf()
         }
 
-        val extractor = FeatureExtractor(state, player)
+        val extractor = FeatureExtractor(state, player, patterns)
         val moveToScore = nonBadMoves.map { loc ->
             Pair(
                 loc,

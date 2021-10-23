@@ -4,12 +4,17 @@ import gorgon.gobase.GameState
 import gorgon.gobase.Location
 import gorgon.gobase.Player
 import gorgon.gobase.SquareType
+import gorgon.pextract.Pattern
+import gorgon.pextract.PatternExtractor
 import kotlin.math.abs
 
-class FeatureExtractor(val state: GameState, val player: Player) {
+class FeatureExtractor(val state: GameState, val player: Player, val patterns: Map<Pattern, Int>) {
     private val capturedStoneCounts = IntArray(Location.numLocs) { 0 }
     private val influenceData = Array(state.board.size, { IntArray(state.board.size) })
     private val saveSelfAtariData: IntArray
+    private val patternExtractor3 = PatternExtractor(3)
+    private val patternExtractor5 = PatternExtractor(5)
+    private val patternExtractor7 = PatternExtractor(7)
 
     init {
         val squareType = SquareType.playerToSquareType(player)
@@ -141,10 +146,11 @@ class FeatureExtractor(val state: GameState, val player: Player) {
         return if (Utils.isEmptyEdge(squareType, idx, state.board)) 1 else 0
     }
 
-    // uses the distance function Dist(dx, dy) = |dx| + |dy| + max(|dx|, |dy|)
+    // Uses the distance function Dist(dx, dy) = |dx| + |dy| + max(|dx|, |dy|)
+    // Range of feature is 2..17
     fun getDistToLastMove(idx: Int): Int {
         if (state.prevMove == Location.pass || state.prevMove == Location.undefined) {
-            return 0
+            return 17
         }
         val (oldRow, oldCol) = Location.idxToRowCol(state.prevMove)
         val (row, col) = Location.idxToRowCol(idx)
@@ -159,16 +165,38 @@ class FeatureExtractor(val state: GameState, val player: Player) {
         val rawInfluence = abs(influenceData[r - 1][c - 1])
         // bucket to discrete feature
         return if (rawInfluence < 1) {
+            7
+        } else if (rawInfluence < 2) {
+            6
+        } else if (rawInfluence < 4) {
+            5
+        } else if (rawInfluence < 8) {
             4
-        } else if (rawInfluence < 3) {
+        } else if (rawInfluence < 16) {
             3
-        } else if (rawInfluence < 9) {
+        } else if (rawInfluence < 32) {
             2
-        } else if (rawInfluence < 27) {
+        } else if (rawInfluence < 64) {
             1
         } else {
             0
         }
+    }
+
+    fun getPattern(idx: Int): Int {
+        val pat7 = patternExtractor7.getPatternAt(state.board, idx, player)
+        var value = patterns[pat7]
+        if (value != null) return value
+
+        val pat5 = patternExtractor5.getPatternAt(state.board, idx, player)
+        value = patterns[pat5]
+        if (value != null) return value
+
+        val pat3 = patternExtractor3.getPatternAt(state.board, idx, player)
+        value = patterns[pat3]
+        if (value != null) return value
+
+        return 0
     }
 
     // Use for debugging only
@@ -181,6 +209,7 @@ class FeatureExtractor(val state: GameState, val player: Player) {
             "emptyEdge" -> getEmptyEdge(loc)
             "influence" -> getInfluence(loc)
             "distToLastMove" -> getDistToLastMove(loc)
+            "pattern" -> getPattern(loc)
             else -> {
                 if (dieIfUnknown) {
                     throw Exception("tried to get unknown feature '" + featureName + "'")

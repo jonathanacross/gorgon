@@ -2,8 +2,10 @@ package gorgon.client
 
 import gorgon.engine.EngineFactory
 import gorgon.engine.FeatureExtractor
+import gorgon.engine.PatternReader
 import gorgon.engine.Utils
 import gorgon.gobase.*
+import gorgon.pextract.Pattern
 import kotlin.system.exitProcess
 
 sealed class Response {
@@ -231,13 +233,14 @@ class GtpClient(private val engineParams: List<String>) {
         return Response.Success(sb.toString())
     }
 
+    private val patterns: Map<Pattern, Int> = PatternReader.readPatternFile()
     private fun computeFeatureValues(player: Player, feature: String): List<Pair<Int, Double>> {
         val nonBadMoves = Utils.getNonBadMoves(player, game.currState())
         if (nonBadMoves.size == 1 && nonBadMoves[0] == Location.pass) {
             return listOf()
         }
 
-        val extractor = FeatureExtractor(game.currState(), player)
+        val extractor = FeatureExtractor(game.currState(), player, patterns)
         val locScores = nonBadMoves.map { loc ->
             Pair(loc, extractor.getFeature(feature, loc, false).toDouble())
             //Pair(loc, Utils.sigmoid(extractor.getFeature(feature, loc).toDouble()))

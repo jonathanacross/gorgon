@@ -1,8 +1,5 @@
 package gorgon.pextract
 
-import gorgon.gobase.GoBoard
-import java.lang.Math.abs
-
 // Handles up to 7x7 patterns; larger would require more bits
 data class Pattern(
     val size: Int,
@@ -58,12 +55,32 @@ data class Pattern(
         return sb.toString()
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Pattern
+
+        if (size != other.size) return false
+        if (blackBits != other.blackBits) return false
+        if (whiteBits != other.whiteBits) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = size
+        result = 398472081 * result + blackBits.hashCode()
+        result = 897923827 * result + whiteBits.hashCode()
+        return result
+    }
+
     companion object {
         // boardUp = size of index increase when moving up the board
         // (roughly equal to the size of the board)
         fun getBoardOffsets(size: Int, boardUp: Int): IntArray {
             val patternRadius = (size - 1) / 2
-            var offsets = IntArray(size * size)
+            val offsets = IntArray(size * size)
             var idx = 0
             for (row in -patternRadius..patternRadius) {
                 for (col in -patternRadius..patternRadius) {
@@ -80,14 +97,14 @@ data class Pattern(
         // r = clockwise rotation
         // s = vertical reflection
         fun getPatternOffsets(size: Int): List<IntArray> {
-            var id = IntArray(size * size)
-            var s = IntArray(size * size)
-            var rrr = IntArray(size * size)
-            var srrr = IntArray(size * size)
-            var rr = IntArray(size * size)
-            var sr = IntArray(size * size)
-            var srr = IntArray(size * size)
-            var r = IntArray(size * size)
+            val id = IntArray(size * size)
+            val s = IntArray(size * size)
+            val rrr = IntArray(size * size)
+            val srrr = IntArray(size * size)
+            val rr = IntArray(size * size)
+            val sr = IntArray(size * size)
+            val srr = IntArray(size * size)
+            val r = IntArray(size * size)
             for (row in 0 until size) {
                 for (col in 0 until size) {
                     val patternIdx = size * row + col

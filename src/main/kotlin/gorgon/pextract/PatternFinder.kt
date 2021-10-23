@@ -36,12 +36,12 @@ fun analyzeGame(game: PlayedGame, extractor: PatternExtractor): HashSet<Pattern>
 }
 
 fun readGame(file: File): PlayedGame? {
-    try {
+    return try {
         val text = file.readText(Charsets.UTF_8)
         val game = SgfReader.parseSgf(text, file.path)
-        return game
+        game
     } catch (e: Exception) {
-        return null
+        null
     }
 }
 
@@ -55,10 +55,10 @@ fun readGames(dir: String): List<PlayedGame> {
 
 fun main(args: Array<String>) {
     // These could be made into arguments.
-    val patternSize = 5
+    val patternSize = 7
     val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Honinbo/"
-    val outputFile = "/home/jonathan/Development/gorgon/data/patterns_5_list.txt"
+    val outputFile = "/home/jonathan/Development/gorgon/data/patterns_" + patternSize + "_list.txt"
 
 
     val extractor = PatternExtractor(patternSize)
@@ -72,23 +72,24 @@ fun main(args: Array<String>) {
 //        println("processing " + games[count].fileName)
         count++
         if (count % 20 == 0) {
-            println("processing game " + count + " of " + games.size)
+            println("processing game " + count + " of " + games.size + ". topPatterns.size = " + topPatterns.size)
         }
         val seenPatterns = analyzeGame(game, extractor)
         for (p in seenPatterns) {
-            sketch.add(p)
-            if (sketch.frequency(p) >= threshold) {
-                topPatterns[p] = sketch.frequency(p)  // approximate
+            val freq = sketch.add(p)  // frequency is an approximation
+            if (freq >= threshold) {
+                topPatterns[p] = freq
             }
         }
     }
 
-    val sortedPatterns = topPatterns.toList().sortedBy{ (_, value) -> -value}
+    println("found " + topPatterns.size + " patterns")
+    //val sortedPatterns = topPatterns.toList().sortedBy{ (_, value) -> -value}
 
     println("writing list of patterns to " + outputFile)
     File(outputFile).printWriter().use { out ->
-        for ((p, freq) in sortedPatterns) {
-            out.println(freq.toString() + "\t" + p.toString() + "\t" + p.size + "\t" + p.blackBits + "\t" + p.whiteBits)
+        for ((p, freq) in topPatterns) {
+            out.println( p.size.toString() + "," + p.blackBits + "," + p.whiteBits + "\t" + p.toString() + "\t" + freq )
         }
     }
 

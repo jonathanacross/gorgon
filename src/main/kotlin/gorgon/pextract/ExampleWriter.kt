@@ -1,18 +1,15 @@
 package gorgon.pextract
 
 import gorgon.engine.FeatureExtractor
+import gorgon.engine.PatternReader
 import gorgon.gobase.GameState
 import gorgon.gobase.GoBoard
-import gorgon.gobase.Location
 import gorgon.gobase.Player
 import java.io.File
 import java.io.FileOutputStream
-import java.lang.Math.log
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
-import kotlin.collections.HashSet
-import kotlin.math.ln
 
 data class FeatureIdxAndValue(val featureIdx: Int, val value: Int)
 data class Example(val label: Int, val nonZeroFeatures: List<FeatureIdxAndValue>) {
@@ -21,7 +18,9 @@ data class Example(val label: Int, val nonZeroFeatures: List<FeatureIdxAndValue>
     }
 }
 
-class ExampleWriter(val features: List<Feature>, val featureMapFileName: String, val examplesFileName: String) {
+class ExampleWriter(features: List<Feature>, private val featureMapFileName: String, private val examplesFileName: String) {
+
+    private val patternData: Map<Pattern, Int> = PatternReader.readPatternFile()
 
     data class FeatNameValueIdx(val name: String, val value: Int, val idx: Int)
     private val featureNameToValueToIdx : Map<String, Map<Int, Int>>
@@ -58,7 +57,7 @@ class ExampleWriter(val features: List<Feature>, val featureMapFileName: String,
             // Play out the game
             var state = GameState.newGameWithBoard(b, Player.White)
             for (move in game.moves) {
-                val featureExtractor = FeatureExtractor(state, move.player)
+                val featureExtractor = FeatureExtractor(state, move.player, patternData)
                 for (loc in state.board.legalMoves(move.player)) {
                     val label = if (loc == move.square) 1 else 0
                     val fValues = ArrayList<FeatureIdxAndValue>()
@@ -92,16 +91,13 @@ class ExampleWriter(val features: List<Feature>, val featureMapFileName: String,
 
 fun main(args: Array<String>) {
     // These could be made into arguments.
+    val featureListFile = "/home/jonathan/Development/gorgon/data/feature_list.txt"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Chisato/"
     val gamesDir = "/home/jonathan/Development/gorgon/data/games/Takagawa/"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Masters/"
-    //val patternsFile = "/home/jonathan/Development/gorgon/data/patterns_5_list.txt"
 
-    // read patterns from patternsFile
-    // create map pattern -> [wins, losses]
-
-    val features = FeatureReader.readFeatureFile("handcrafted_features.tsv")
+    val features = FeatureReader.readFeatureFile(featureListFile)
     val games = readGames(gamesDir)
 
     val featureMapFileName = "/home/jonathan/Development/gorgon/data/feature_map.tsv"
@@ -112,7 +108,7 @@ fun main(args: Array<String>) {
 
     // erase the examples file before writing, since we write in append mode
     val examplesFilePath = Paths.get(examplesFileName)
-    if(examplesFilePath != null && Files.exists(examplesFilePath) && Files.isRegularFile(examplesFilePath)) {
+    if (Files.exists(examplesFilePath) && Files.isRegularFile(examplesFilePath)) {
         Files.delete(examplesFilePath)
     }
     var count = 0

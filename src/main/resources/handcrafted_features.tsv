@@ -10,10 +10,13 @@ capturedStoneCount	7	7.0
 selfAtari	1	-0.7
 enemyAtari	1	0.7
 emptyEdge	1	-0.3
-influence	1	0.025
-influence	2	0.05
-influence	3	0.075
-influence	4	0.1
+influence	1	0.02
+influence	2	0.03
+influence	3	0.04
+influence	4	0.05
+influence	5	0.06
+influence	6	0.07
+influence	7	0.08
 distToLastMove	2	0.05
 distToLastMove	3	0.04
 distToLastMove	4	0.03

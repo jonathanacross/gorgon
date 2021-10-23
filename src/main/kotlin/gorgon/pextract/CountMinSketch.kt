@@ -7,11 +7,17 @@ class CountMinSketch {
     private val hashSize = 200003
     private val lookupMaps = Array(numHashes, { IntArray(hashSize) })
 
-    fun add(pattern: Pattern) {
+    // Returns the frequency of the pattern after insertion.
+    fun add(pattern: Pattern): Int {
+        var minCount = Int.MAX_VALUE
         for (hashIdx in 0 until numHashes) {
             val hash = pattern.countMinSketchHash(hashIdx)
-            lookupMaps[hashIdx][(hash % hashSize).toInt()]++
+            val bucket = (hash % hashSize).toInt()
+            val freq = lookupMaps[hashIdx][bucket] + 1
+            minCount = min(minCount, freq)
+            lookupMaps[hashIdx][bucket] = freq
         }
+        return minCount
     }
 
     // May overestimate frequency, but never underestimate

@@ -1,13 +1,12 @@
 package gorgon.pextract
 
 import gorgon.engine.FeatureExtractor
+import gorgon.engine.PatternReader
 import gorgon.gobase.GameState
 import gorgon.gobase.GoBoard
-import gorgon.gobase.Location
 import gorgon.gobase.Player
-import java.lang.Math.log
+import java.io.File
 import java.util.*
-import kotlin.collections.HashSet
 import kotlin.math.ln
 
 data class Feature(val name: String, val value: Int)
@@ -23,8 +22,7 @@ class FeatureReader {
         }
 
         fun readFeatureFile(featureFileName: String): List<Feature> {
-            val path = "/"  // relative to src/main/resources
-            val text = FeatureReader::class.java.getResource(path + featureFileName).readText()
+            val text = File(featureFileName).readText()
 
             val lines = text.split("\n")
             val features = lines.filterNot { line -> line.startsWith("#") || line.isBlank() }
@@ -32,14 +30,13 @@ class FeatureReader {
 
             return features.toList()
         }
-
     }
 }
 
-class NaiveBayesScorer(val features: List<Feature>) {
-
+class NaiveBayesScorer(features: List<Feature>) {
+    private val patternData: Map<Pattern, Int> = PatternReader.readPatternFile()
     val featureNameToValueToFreqs = HashMap<String, HashMap<Int, Freq>>()
-    val bias = Freq(1, 1)
+    val bias = Freq(0, 0)
     init {
         for (feature in features) {
             featureNameToValueToFreqs[feature.name]  = hashMapOf()
@@ -60,14 +57,14 @@ class NaiveBayesScorer(val features: List<Feature>) {
             // Play out the game
             var state = GameState.newGameWithBoard(b, Player.White)
             for (move in game.moves) {
-                val featureExtractor = FeatureExtractor(state, move.player)
+                val featureExtractor = FeatureExtractor(state, move.player, patternData)
                 for (loc in state.board.legalMoves(move.player)) {
                     for ((name, valueToFreqs) in featureNameToValueToFreqs) {
                         val value = featureExtractor.getFeature(name, loc, true)
                         if (value == 0) {
                             continue
                         }
-                        val freqs: Freq = valueToFreqs.getOrPut(value) { Freq(1, 1) }
+                        val freqs: Freq = valueToFreqs.getOrPut(value) { Freq(0, 0) }
                         if (loc == move.square) {
                             freqs.timesWon++
                             bias.timesWon++
@@ -89,15 +86,17 @@ class NaiveBayesScorer(val features: List<Feature>) {
 
 fun main(args: Array<String>) {
     // These could be made into arguments.
+    val featureListFile = "/home/jonathan/Development/gorgon/data/feature_list.txt"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
     val gamesDir = "/home/jonathan/Development/gorgon/data/games/Takagawa/"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Masters/"
     //val patternsFile = "/home/jonathan/Development/gorgon/data/patterns_5_list.txt"
+    val outputFile = "/home/jonathan/Development/gorgon/data/naive_bayes_feature_weights.txt"
 
     // read patterns from patternsFile
     // create map pattern -> [wins, losses]
 
-    val features = FeatureReader.readFeatureFile("handcrafted_features.tsv")
+    val features = FeatureReader.readFeatureFile(featureListFile)
     val games = readGames(gamesDir)
     val nbScorer = NaiveBayesScorer(features)
 
@@ -113,16 +112,21 @@ fun main(args: Array<String>) {
     val bias = nbScorer.bias
 
     val biasWeight = ln(bias.timesWon.toDouble() / bias.timesLost.toDouble())
-    println("_bias_" + "\t" + 1 + "\t" + biasWeight + "\t" + bias.timesWon + "\t" + bias.timesLost)
-    for ((name, valFreq) in nbScorer.featureNameToValueToFreqs) {
-        for ((value, freq) in valFreq) {
-            if (value == 0) {
-                continue
+    val winPrior = bias.timesWon.toDouble() / bias.timesLost.toDouble()
+    val lossPrior = 1.0 - winPrior
+
+    File(outputFile).printWriter().use { out ->
+        out.println("_bias_" + "\t" + 1 + "\t" + biasWeight + "\t" + bias.timesWon + "\t" + bias.timesLost)
+        for ((name, valFreq) in nbScorer.featureNameToValueToFreqs) {
+            for ((value, freq) in valFreq) {
+                if (value == 0) {
+                    continue
+                }
+                val probFeatValGivenWin = (freq.timesWon.toDouble() + winPrior) / (bias.timesWon.toDouble() + 1.0)
+                val probFeatValGivenLoss = (freq.timesLost.toDouble() + lossPrior) / (bias.timesLost.toDouble() + 1.0)
+                val weight = ln(probFeatValGivenWin / probFeatValGivenLoss)
+                out.println(name + "\t" + value + "\t" + weight + "\t" + freq.timesWon + "\t" + freq.timesLost)
             }
-            val probFeatValGivenWin = freq.timesWon.toDouble() / bias.timesWon.toDouble()
-            val probFeatValGivenLoss = freq.timesLost.toDouble() / bias.timesLost.toDouble()
-            val weight = ln( probFeatValGivenWin / probFeatValGivenLoss)
-            println(name + "\t" + value + "\t" + weight + "\t" + freq.timesWon + "\t" + freq.timesLost)
         }
     }
 }

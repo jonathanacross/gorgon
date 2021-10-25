@@ -6,6 +6,8 @@ import gorgon.gobase.Player
 abstract class Engine {
     abstract fun suggestMove(player: Player, state: GameState, komi: Double): Int
     abstract fun moveProbs(player: Player, state: GameState, komi: Double): List<Pair<Int, Double>>
+    // explains how score is computed at the given point
+    abstract fun detailScore(player: Player, loc: Int, state: GameState): String
 }
 
 class EngineFactory {
@@ -13,7 +15,8 @@ class EngineFactory {
         val engines = mapOf(
             "random" to RandomEngine(),
             "noeye" to NoEyeEngine(),
-            "feature" to FeatureEngine(),
+            "feature" to FeatureEngine("features.tsv"),
+            "experimental" to FeatureEngine("experimental_features.tsv"),
         )
 
         fun newEngine(params: List<String>): Engine {

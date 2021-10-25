@@ -144,7 +144,8 @@ class GtpClient(private val engineParams: List<String>) {
         return if (parsedKomi == null) {
             Response.Failure("Couldn't parse komi " + args[1])
         } else {
-            game.komi = parsedKomi
+            komi = parsedKomi
+            game.komi = komi
             Response.Success("")
         }
     }

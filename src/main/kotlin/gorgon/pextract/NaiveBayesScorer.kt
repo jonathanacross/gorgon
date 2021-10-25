@@ -44,7 +44,7 @@ class NaiveBayesScorer(features: List<Feature>) {
     }
 
     fun analyzeGame(game: PlayedGame) {
-//        try {
+        try {
             // set up initial position
             var b = GoBoard.emptyBoard(game.boardSize)
             for (loc in game.addedBlack) {
@@ -57,7 +57,7 @@ class NaiveBayesScorer(features: List<Feature>) {
             // Play out the game
             var state = GameState.newGameWithBoard(b, Player.White)
             for (move in game.moves) {
-                val featureExtractor = FeatureExtractor(state, move.player, patternData)
+                val featureExtractor = FeatureExtractor(state, move.player, patternData, null)
                 for (loc in state.board.legalMoves(move.player)) {
                     for ((name, valueToFreqs) in featureNameToValueToFreqs) {
                         val value = featureExtractor.getFeature(name, loc, true)
@@ -77,9 +77,9 @@ class NaiveBayesScorer(features: List<Feature>) {
 
                 state = state.playMove(move.player, move.square)
             }
-//        } catch (e: Exception) {
-//            println("Warning: problem analyzing game " + game.fileName)
-//        }
+        } catch (e: Exception) {
+            println("Warning: problem analyzing game " + game.fileName)
+        }
     }
 }
 
@@ -87,8 +87,8 @@ class NaiveBayesScorer(features: List<Feature>) {
 fun main(args: Array<String>) {
     // These could be made into arguments.
     val featureListFile = "/home/jonathan/Development/gorgon/data/feature_list.txt"
-    //val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
-    val gamesDir = "/home/jonathan/Development/gorgon/data/games/Takagawa/"
+    val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
+    //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Takagawa/"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Masters/"
     //val patternsFile = "/home/jonathan/Development/gorgon/data/patterns_5_list.txt"
     val outputFile = "/home/jonathan/Development/gorgon/data/naive_bayes_feature_weights.txt"

@@ -48,8 +48,10 @@ class GtpClient(private val engineParams: List<String>) {
         "gogui-analyze_commands",
         "showboard",
         "all_legal",
+        "gorgon-cprobs",
         "gorgon-probs",
-        "gorgon-feature_values"
+        "gorgon-feature_values",
+        "gorgon-detail_score"
     )
 
     fun processCommand(input: String) {
@@ -80,8 +82,10 @@ class GtpClient(private val engineParams: List<String>) {
                 "gogui-analyze_commands" -> doAnalyzeCommands()
                 "showboard" -> doShowBoard()
                 "all_legal" -> doAllLegal(tokens)
+                "gorgon-cprobs" -> doMoveProbColors(tokens)
                 "gorgon-probs" -> doMoveProbs(tokens)
                 "gorgon-feature_values" -> doFeatureValues(tokens)
+                "gorgon-detail_score" -> doDetailScore(tokens)
                 else -> doUnknown()
             }
 
@@ -186,8 +190,10 @@ class GtpClient(private val engineParams: List<String>) {
             listOf(
                 "string/ShowBoard/showboard",
                 "plist/All Legal/all_legal %c",
+                "cboard/Color Probs/gorgon-cprobs %c",
                 "dboard/Probs/gorgon-probs %c",
                 "dboard/Feature Values/gorgon-feature_values %c %s",
+                "string/Detail Score/gorgon-detail_score %c %p",
             ).joinToString("\n")
         )
     }
@@ -219,6 +225,36 @@ class GtpClient(private val engineParams: List<String>) {
         return board
     }
 
+    private fun doMoveProbColors(args: List<String>): Response {
+        val player = Player.parsePlayerString(args[1])
+        val probs = engine.moveProbs(player, game.currState(), game.komi)
+        val board = pointsToBoard(probs)
+        val sb = StringBuilder()
+        val gradient = ColorGradient(
+            listOf(
+                BreakPoint(0.0, Color(0.0, 0.0, 0.0)),
+                BreakPoint(0.25, Color(1.0, 0.0, 0.0)),
+                BreakPoint(0.5, Color(1.0, 1.0, 0.0)),
+                BreakPoint(0.75, Color(0.0, 1.0, 0.0)),
+                BreakPoint(1.0, Color(1.0, 1.0, 1.0)),
+            )
+        )
+//        val gradient = ColorGradient(
+//            listOf(
+//                BreakPoint(0.0, Color(1.0, 0.0, 0.0)),
+//                BreakPoint(0.5, Color(1.0, 1.0, 0.0)),
+//                BreakPoint(1.0, Color(0.0, 1.0, 0.0)),
+//            ))
+        for (r in size - 1 downTo 0) {
+            for (c in 0 until size) {
+                val color = gradient.toColor(board[r][c])
+                sb.append(color.toHtmlRgbString() + " ")
+            }
+            sb.append("\n")
+        }
+        return Response.Success(sb.toString())
+    }
+
     private fun doMoveProbs(args: List<String>): Response {
         val player = Player.parsePlayerString(args[1])
         val probs = engine.moveProbs(player, game.currState(), game.komi)
@@ -240,7 +276,9 @@ class GtpClient(private val engineParams: List<String>) {
             return listOf()
         }
 
-        val extractor = FeatureExtractor(game.currState(), player, patterns)
+        // TODO: this is now engine-dependent, since the set of patterns has to match
+        // the engine set of patterns.  Here, we'll just put in everything
+        val extractor = FeatureExtractor(game.currState(), player, patterns, null)
         val locScores = nonBadMoves.map { loc ->
             Pair(loc, extractor.getFeature(feature, loc, false).toDouble())
             //Pair(loc, Utils.sigmoid(extractor.getFeature(feature, loc).toDouble()))
@@ -272,5 +310,12 @@ class GtpClient(private val engineParams: List<String>) {
             sb.append("\n")
         }
         return Response.Success(sb.toString())
+    }
+
+    private fun doDetailScore(args: List<String>): Response {
+        val player = Player.parsePlayerString(args[1])
+        val point = Location.stringToIdx(args[2])
+        val why = engine.detailScore(player, point, game.currState())
+        return Response.Success(why)
     }
 }

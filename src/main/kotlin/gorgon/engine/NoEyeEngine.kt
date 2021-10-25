@@ -24,4 +24,8 @@ class NoEyeEngine : Engine() {
         return moveToScore
     }
 
+    override fun detailScore(player: Player, loc: Int, state: GameState): String {
+        return "equal prob if legal"
+    }
+
 }

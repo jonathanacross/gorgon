@@ -31,4 +31,8 @@ class RandomEngine : Engine() {
         val moveToScore = legalMoves.map { loc -> Pair(loc, 1.0) }
         return moveToScore
     }
+
+    override fun detailScore(player: Player, loc: Int, state: GameState): String {
+        return "equal prob if legal"
+    }
 }

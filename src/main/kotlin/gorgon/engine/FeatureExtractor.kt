@@ -8,7 +8,12 @@ import gorgon.pextract.Pattern
 import gorgon.pextract.PatternExtractor
 import kotlin.math.abs
 
-class FeatureExtractor(val state: GameState, val player: Player, val patterns: Map<Pattern, Int>) {
+class FeatureExtractor(
+    val state: GameState,
+    val player: Player,
+    val patterns: Map<Pattern, Int>,
+    val knownPatternValues: Set<Int>?
+) {
     private val capturedStoneCounts = IntArray(Location.numLocs) { 0 }
     private val influenceData = Array(state.board.size, { IntArray(state.board.size) })
     private val saveSelfAtariData: IntArray
@@ -186,15 +191,15 @@ class FeatureExtractor(val state: GameState, val player: Player, val patterns: M
     fun getPattern(idx: Int): Int {
         val pat7 = patternExtractor7.getPatternAt(state.board, idx, player)
         var value = patterns[pat7]
-        if (value != null) return value
+        if (value != null && (knownPatternValues == null || knownPatternValues.contains(value))) return value
 
         val pat5 = patternExtractor5.getPatternAt(state.board, idx, player)
         value = patterns[pat5]
-        if (value != null) return value
+        if (value != null && (knownPatternValues == null || knownPatternValues.contains(value))) return value
 
         val pat3 = patternExtractor3.getPatternAt(state.board, idx, player)
         value = patterns[pat3]
-        if (value != null) return value
+        if (value != null && (knownPatternValues == null || knownPatternValues.contains(value))) return value
 
         return 0
     }

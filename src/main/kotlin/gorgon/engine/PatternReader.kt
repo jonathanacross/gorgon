@@ -32,7 +32,6 @@ class PatternReader {
 
                 patternToIdxMap[pattern] = value
             }
-            println("loaded " + patternToIdxMap.size + " patterns ")
 
             return patternToIdxMap
         }

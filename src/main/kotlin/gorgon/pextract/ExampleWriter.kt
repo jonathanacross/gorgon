@@ -44,7 +44,7 @@ class ExampleWriter(features: List<Feature>, private val featureMapFileName: Str
 
     fun writeFeaturesForGame(game: PlayedGame) {
         val examples = ArrayList<Example>()
-//        try {
+        try {
             // set up initial position
             var b = GoBoard.emptyBoard(game.boardSize)
             for (loc in game.addedBlack) {
@@ -57,7 +57,7 @@ class ExampleWriter(features: List<Feature>, private val featureMapFileName: Str
             // Play out the game
             var state = GameState.newGameWithBoard(b, Player.White)
             for (move in game.moves) {
-                val featureExtractor = FeatureExtractor(state, move.player, patternData)
+                val featureExtractor = FeatureExtractor(state, move.player, patternData, null)
                 for (loc in state.board.legalMoves(move.player)) {
                     val label = if (loc == move.square) 1 else 0
                     val fValues = ArrayList<FeatureIdxAndValue>()
@@ -77,9 +77,9 @@ class ExampleWriter(features: List<Feature>, private val featureMapFileName: Str
 
                 state = state.playMove(move.player, move.square)
             }
-//        } catch (e: Exception) {
-//            println("Warning: problem analyzing game " + game.fileName)
-//        }
+        } catch (e: Exception) {
+            println("Warning: problem analyzing game " + game.fileName)
+        }
         FileOutputStream(examplesFileName, true).bufferedWriter().use { writer ->
             for (example in examples) {
                 writer.appendLine(example.toString())

@@ -66,7 +66,10 @@ class FeatureExtractor(
                         }
                         val influence = influenceConv[dRow + 3][dCol + 3]
                         val weight =
-                            when (state.board.data[Location.rowColToIdx(offsetRow + 1, offsetCol + 1)]) {
+                            when (state.board.data[Location.rowColToIdx(
+                                offsetRow + 1,
+                                offsetCol + 1
+                            )]) {
                                 squareType -> 1
                                 otherSquareType -> -1
                                 else -> 0
@@ -103,38 +106,38 @@ class FeatureExtractor(
         return forcedSavingLocations
     }
 
-    fun getCapturedStoneCountsFeature(idx: Int): Int {
-        val nStones = capturedStoneCounts[idx]
+    fun getCapturedStoneCountsFeature(loc: Int): Int {
+        val nStones = capturedStoneCounts[loc]
         return if (nStones < 7) nStones else 7
     }
 
     // See if we can save some of our stones that are in atari
-    fun getSaveSelfAtari(idx: Int): Int {
-        return saveSelfAtariData[idx]
+    fun getSaveSelfAtari(loc: Int): Int {
+        return saveSelfAtariData[loc]
     }
 
-    fun getSelfAtari(idx: Int): Int {
-        val nextBoard = state.board.playMove(player, idx).board
+    fun getSelfAtari(loc: Int): Int {
+        val nextBoard = state.board.playMove(player, loc).board
         val squareType = SquareType.playerToSquareType(player)
-        val group = nextBoard.floodfill(idx, { x: Int -> x == squareType })
-        val chain = Chain(idx, group)
+        val group = nextBoard.floodfill(loc, { x: Int -> x == squareType })
+        val chain = Chain(loc, group)
 
         val numLiberties = Utils.getLiberties(nextBoard, chain).size
 
         return if (numLiberties == 1) 1 else 0
     }
 
-    fun getEnemyAtari(idx: Int): Int {
-        val nextBoard = state.board.playMove(player, idx).board
+    fun getEnemyAtari(loc: Int): Int {
+        val nextBoard = state.board.playMove(player, loc).board
         val squareType = SquareType.playerToSquareType(player)
         val otherSquareType = SquareType.opposite(squareType)
         var enemyAtariCount = 0
-        for (n in nextBoard.neighbors(idx)) {
+        for (n in nextBoard.neighbors(loc)) {
             if (nextBoard.data[n] != otherSquareType) {
                 continue
             }
             val group = nextBoard.floodfill(n, { x: Int -> x == otherSquareType })
-            val chain = Chain(idx, group)
+            val chain = Chain(loc, group)
             // Note: it's possible that we're overestimating the chains,
             // when two of the neighbors belong to the same chain
             val numLiberties = Utils.getLiberties(nextBoard, chain).size
@@ -146,58 +149,124 @@ class FeatureExtractor(
         return if (enemyAtariCount > 0) 1 else 0
     }
 
-    fun getEmptyEdge(idx: Int): Int {
+    fun getEmptyEdge(loc: Int): Int {
         val squareType = SquareType.playerToSquareType(player)
-        return if (Utils.isEmptyEdge(squareType, idx, state.board)) 1 else 0
+        return if (Utils.isEmptyEdge(squareType, loc, state.board)) 1 else 0
     }
 
     // Uses the distance function Dist(dx, dy) = |dx| + |dy| + max(|dx|, |dy|)
     // Range of feature is 2..17
-    fun getDistToLastMove(idx: Int): Int {
+    fun getDistToLastMove(loc: Int): Int {
         if (state.prevMove == Location.pass || state.prevMove == Location.undefined) {
             return 17
         }
         val (oldRow, oldCol) = Location.idxToRowCol(state.prevMove)
-        val (row, col) = Location.idxToRowCol(idx)
+        val (row, col) = Location.idxToRowCol(loc)
         val dx = abs(oldCol - col)
         val dy = abs(oldRow - row)
         val dist = dx + dy + maxOf(dx, dy)
         return minOf(dist, 17)
     }
 
-    fun getInfluence(idx: Int): Int {
-        val (r, c) = Location.idxToRowCol(idx)
-        val rawInfluence = abs(influenceData[r - 1][c - 1])
+    fun getInfluence(loc: Int): Int {
+        val (r, c) = Location.idxToRowCol(loc)
+        val rawInfluence = influenceData[r - 1][c - 1]
+
         // bucket to discrete feature
-        return if (rawInfluence < 1) {
-            7
-        } else if (rawInfluence < 2) {
-            6
-        } else if (rawInfluence < 4) {
-            5
-        } else if (rawInfluence < 8) {
-            4
-        } else if (rawInfluence < 16) {
-            3
-        } else if (rawInfluence < 32) {
-            2
-        } else if (rawInfluence < 64) {
-            1
-        } else {
-            0
+        val breakPoints = listOf(-64, -32, -16, -8, -4, -2, -1, 0, 1, 3, 7, 15, 31, 63)
+        for (i in breakPoints.indices) {
+            if (rawInfluence <= breakPoints[i]) {
+                return i + 1
+            }
         }
+        return breakPoints.size + 1
     }
 
-    fun getPattern(idx: Int): Int {
-        val pat7 = patternExtractor7.getPatternAt(state.board, idx, player)
+    fun isJump(loc: Int, color: Int, dir: Int, numSpaces: Int): Boolean {
+        var spaceCount = 0
+        var currLoc = loc
+        for (len in 0 until numSpaces) {
+            currLoc += dir
+            if (state.board.data[currLoc] != SquareType.Empty) {
+                return false
+            }
+            spaceCount++
+        }
+        if (state.board.data[currLoc + dir] != color) {
+            return false
+        }
+        return true
+    }
+
+    fun isKnightMove(loc: Int, color: Int, longDir: Int, shortDir: Int, numSpaces: Int): Boolean {
+        var spaceCount = 0
+        var currLoc = loc
+        if (state.board.data[currLoc + shortDir] != SquareType.Empty) {
+            return false
+        }
+        for (len in 0 until numSpaces) {
+            currLoc += longDir
+            if (state.board.data[currLoc] != SquareType.Empty ||
+                state.board.data[currLoc + shortDir] != SquareType.Empty)  {
+                return false
+            }
+            spaceCount++
+        }
+        if (state.board.data[currLoc + longDir] != SquareType.Empty ||
+            state.board.data[currLoc + longDir + shortDir] != color) {
+            return false
+        }
+        return true
+    }
+
+    private fun hasJump(loc: Int, color: Int, numSpaces: Int): Boolean {
+        return isJump(loc, color, Location.left, numSpaces) ||
+                isJump(loc, color, Location.right, numSpaces) ||
+                isJump(loc, color, Location.up, numSpaces) ||
+                isJump(loc, color, Location.down, numSpaces)
+    }
+
+    private fun hasKnightMove(loc: Int, color: Int, numSpaces: Int): Boolean {
+        return isKnightMove(loc, color, Location.left, Location.up, numSpaces) ||
+                isKnightMove(loc, color, Location.right, Location.up, numSpaces) ||
+                isKnightMove(loc, color, Location.left, Location.down, numSpaces) ||
+                isKnightMove(loc, color, Location.right, Location.down, numSpaces) ||
+                isKnightMove(loc, color, Location.up, Location.left, numSpaces) ||
+                isKnightMove(loc, color, Location.down, Location.left, numSpaces) ||
+                isKnightMove(loc, color, Location.up, Location.right, numSpaces) ||
+                isKnightMove(loc, color, Location.down, Location.right, numSpaces)
+    }
+
+    // Jumps and knight moves, as described in
+    // https://econcs.seas.harvard.edu/files/econcs/files/harrisonthesis.pdf
+    fun getJumps(loc: Int): Int {
+        if (state.board.data[loc] != SquareType.Empty) { return 0 }
+
+        val squareType = SquareType.playerToSquareType(player)
+        if (hasJump(loc, squareType, 0)) { return 1 }
+        if (hasKnightMove(loc, squareType, 0)) { return 2 }
+        if (hasJump(loc, squareType, 1)) { return 3 }
+        if (hasKnightMove(loc, squareType, 1)) { return 4 }
+        if (hasJump(loc, squareType, 2)) { return 5 }
+        if (hasKnightMove(loc, squareType, 2)) { return 6 }
+        if (hasJump(loc, squareType, 3)) { return 7 }
+        if (hasKnightMove(loc, squareType, 3)) { return 8 }
+        if (hasJump(loc, squareType, 4)) { return 9 }
+        if (hasKnightMove(loc, squareType, 4)) { return 10 }
+
+        return 0
+    }
+
+    fun getPattern(loc: Int): Int {
+        val pat7 = patternExtractor7.getPatternAt(state.board, loc, player)
         var value = patterns[pat7]
         if (value != null && (knownPatternValues == null || knownPatternValues.contains(value))) return value
 
-        val pat5 = patternExtractor5.getPatternAt(state.board, idx, player)
+        val pat5 = patternExtractor5.getPatternAt(state.board, loc, player)
         value = patterns[pat5]
         if (value != null && (knownPatternValues == null || knownPatternValues.contains(value))) return value
 
-        val pat3 = patternExtractor3.getPatternAt(state.board, idx, player)
+        val pat3 = patternExtractor3.getPatternAt(state.board, loc, player)
         value = patterns[pat3]
         if (value != null && (knownPatternValues == null || knownPatternValues.contains(value))) return value
 
@@ -215,6 +284,7 @@ class FeatureExtractor(
             "influence" -> getInfluence(loc)
             "distToLastMove" -> getDistToLastMove(loc)
             "pattern" -> getPattern(loc)
+            "jumps" -> getJumps(loc)
             else -> {
                 if (dieIfUnknown) {
                     throw Exception("tried to get unknown feature '" + featureName + "'")

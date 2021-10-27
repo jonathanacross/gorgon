@@ -43,9 +43,10 @@ class SgfReaderTest {
                 Move(Player.White, Location.rowColToIdx(17, 7)),
                 Move(Player.Black, Location.rowColToIdx(10, 17)),
                 Move(Player.White, Location.rowColToIdx(16, 17))
-            )
+            ),
+            fileName = "myfile.sgf"
         )
-        assertEquals(expectedPlayedGame, SgfReader.parseSgf(sgf))
+        assertEquals(expectedPlayedGame, SgfReader.parseSgf(sgf, "myfile.sgf"))
     }
 
     @Test
@@ -79,8 +80,9 @@ class SgfReaderTest {
                 Move(Player.White, Location.rowColToIdx(3, 4)),
                 Move(Player.Black, Location.rowColToIdx(5, 1)),
                 Move(Player.White, Location.rowColToIdx(4, 2))
-            )
+            ),
+            fileName = "myfile.sgf"
         )
-        assertEquals(expectedPlayedGame, SgfReader.parseSgf(sgf))
+        assertEquals(expectedPlayedGame, SgfReader.parseSgf(sgf, "myfile.sgf"))
     }
 }

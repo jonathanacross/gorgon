@@ -100,7 +100,7 @@ class GtpClient(private val engineParams: List<String>) {
 
     private fun doName() = Response.Success("gorgon " + engineParams.joinToString(" "))
 
-    private fun doVersion() = Response.Success("0.0.0")
+    private fun doVersion() = Response.Success("0.1.0")
 
     private fun doProtocolVersion() = Response.Success("2")
 

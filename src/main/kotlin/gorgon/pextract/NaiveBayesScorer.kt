@@ -10,7 +10,7 @@ import java.util.*
 import kotlin.math.ln
 
 data class Feature(val name: String, val value: Int)
-data class Freq(var timesWon: Int, var timesLost: Int)
+data class Freq(var timesWon: Long, var timesLost: Long)
 
 class FeatureReader {
     companion object {
@@ -59,6 +59,11 @@ class NaiveBayesScorer(features: List<Feature>) {
             for (move in game.moves) {
                 val featureExtractor = FeatureExtractor(state, move.player, patternData, null)
                 for (loc in state.board.legalMoves(move.player)) {
+                    if (loc == move.square) {
+                        bias.timesWon++
+                    } else {
+                        bias.timesLost++
+                    }
                     for ((name, valueToFreqs) in featureNameToValueToFreqs) {
                         val value = featureExtractor.getFeature(name, loc, true)
                         if (value == 0) {
@@ -67,10 +72,8 @@ class NaiveBayesScorer(features: List<Feature>) {
                         val freqs: Freq = valueToFreqs.getOrPut(value) { Freq(0, 0) }
                         if (loc == move.square) {
                             freqs.timesWon++
-                            bias.timesWon++
                         } else {
                             freqs.timesLost++
-                            bias.timesLost++
                         }
                     }
                 }
@@ -87,8 +90,8 @@ class NaiveBayesScorer(features: List<Feature>) {
 fun main(args: Array<String>) {
     // These could be made into arguments.
     val featureListFile = "/home/jonathan/Development/gorgon/data/feature_list.txt"
-    val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
-    //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Takagawa/"
+    //val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
+    val gamesDir = "/home/jonathan/Development/gorgon/data/games/Takagawa/"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Masters/"
     //val patternsFile = "/home/jonathan/Development/gorgon/data/patterns_5_list.txt"
     val outputFile = "/home/jonathan/Development/gorgon/data/naive_bayes_feature_weights.txt"

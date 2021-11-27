@@ -54,9 +54,9 @@ fun readFeatureFile(fileName: String): List<FeatureData> {
 }
 
 fun main(args: Array<String>) {
-    val patternFileName = "/home/jonathan/Development/gorgon/src/main/resources/patterns.tsv"
-    val featureFileName = "/home/jonathan/Development/gorgon/src/main/resources/experimental_features.tsv"
-    val outputFile = "/home/jonathan/Development/gorgon/data/experimental_features_joined_debug.tsv"
+    val patternFileName = "/Users/jonathan/Development/gorgon/src/main/resources/patterns.tsv"
+    val featureFileName = "/Users/jonathan/Development/gorgon/src/main/resources/features_pat3.tsv"
+    val outputFile = "/Users/jonathan/Development/gorgon/data/experimental_features_joined_debug.tsv"
 
     val patternData = readPatternFile(patternFileName)
     val featureData = readFeatureFile(featureFileName)

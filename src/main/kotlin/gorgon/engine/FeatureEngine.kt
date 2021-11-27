@@ -54,8 +54,28 @@ class FeatureEngine(featureFileName: String) : Engine() {
         }
 
         val extractor = FeatureExtractor(state, player, patterns, knownPatternValues)
-        val moveToScore = nonBadMoves.map { loc -> Pair(loc, scoreLocation(loc, extractor, true)) }
 
+        // Take a move randomly by probability
+        // This hurts strength (at least vs AmiGo)
+//        val moveToScore = nonBadMoves.map { loc ->
+//            Pair(
+//                loc,
+//                Utils.sigmoid(scoreLocation(loc, extractor, false))
+//            )
+//        }
+//        val sumProbs = moveToScore.map{ x -> x.second}.sum()
+//        val p = Math.random() * sumProbs
+//        var cumulativeProbability = 0.0
+//        for (item in moveToScore) {
+//            cumulativeProbability += item.second
+//            if (p <= cumulativeProbability) {
+//                return item.first
+//            }
+//        }
+//        return item.last
+
+        // Take the top move, after jittering
+        val moveToScore = nonBadMoves.map { loc -> Pair(loc, scoreLocation(loc, extractor, true)) }
         val best = moveToScore.maxByOrNull { x -> x.second }
         return best?.first ?: Location.pass
     }

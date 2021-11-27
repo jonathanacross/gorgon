@@ -17,6 +17,9 @@ class EngineFactory {
             "noeye" to NoEyeEngine(),
             "feature" to FeatureEngine("features.tsv"),
             "experimental" to FeatureEngine("experimental_features.tsv"),
+            "rave" to RaveEngine(),
+            "mcts" to MctsEngine(FeatureEngine("features.tsv"), NoEyeEngine(), 500),
+            "mcts2" to MctsEngine(NoEyeEngine(), NoEyeEngine(), 500),
         )
 
         fun newEngine(params: List<String>): Engine {

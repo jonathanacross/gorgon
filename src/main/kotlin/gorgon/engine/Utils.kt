@@ -24,7 +24,8 @@ class Utils {
         }
 
         // Fast check to see if this is an eye for player 'squaretype'
-        // if this returns true, this *is* an eye, if returns false, then may/may not be (part of) an eye
+        // if this returns true, this *is* an eye, if returns false, then
+        // may/may not be (part of) an eye
         // This code is somewhat verbose, because it's optimized for speed
         fun isTrivialEye(squareType: Int, idx: Int, board: GoBoard): Boolean {
             val up = board.data[Location.up(idx)]

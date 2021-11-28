@@ -129,4 +129,83 @@ class FeatureExtractorTest {
         assertEquals(true, extractor.isKnightMove(Location.rowColToIdx(2,4), black, Location.left, Location.up, 1))
         assertEquals(false, extractor.isKnightMove(Location.rowColToIdx(1,4), black, Location.left, Location.up, 2))
     }
+
+    @Test
+    fun testGetNearCorner() {
+        val boardString =
+            """
+           9 . . . . . . . . . 
+           8 . . . . . . . . . 
+           7 . . x x . x x . . 
+           6 . . x x . x x . . 
+           5 . . . . . . . . . 
+           4 . . x x . x x . . 
+           3 . . x x . x x . . 
+           2 . . . . . . . . . 
+           1 . . . . . . . . . 
+             1 2 3 4 5 6 7 8 9
+            """
+        val board = GoBoard.fromString(boardString)
+        val state = GameState.newGameWithBoard(board, Player.Black)
+        val extractor = FeatureExtractor(state, Player.White, mapOf(), null)
+        val boardSize = state.board.size
+
+        val expected = arrayListOf(
+            arrayListOf(0, 0, 0, 0, 0, 0, 0, 0, 0),
+            arrayListOf(0, 0, 0, 0, 0, 0, 0, 0, 0),
+            arrayListOf(0, 0, 1, 1, 0, 1, 1, 0, 0),
+            arrayListOf(0, 0, 1, 1, 0, 1, 1, 0, 0),
+            arrayListOf(0, 0, 0, 0, 0, 0, 0, 0, 0),
+            arrayListOf(0, 0, 1, 1, 0, 1, 1, 0, 0),
+            arrayListOf(0, 0, 1, 1, 0, 1, 1, 0, 0),
+            arrayListOf(0, 0, 0, 0, 0, 0, 0, 0, 0),
+            arrayListOf(0, 0, 0, 0, 0, 0, 0, 0, 0),
+        )
+
+        for (r in 1..boardSize) {
+            for (c in 1..boardSize) {
+                assertEquals(
+                    expected[r - 1][c - 1],
+                    extractor.getNearCorner(Location.rowColToIdx(r, c))
+                )
+            }
+        }
+    }
+
+    @Test
+    fun testGetAccess() {
+        val boardString =
+            """
+           7 . . x . . . .
+           6 . . x . . . .
+           5 . . x . x x x
+           4 x x x . . o .
+           3 . . . . . . .
+           2 . . x x . . .
+           1 . . o . . . .
+             1 2 3 4 5 6 7
+            """
+        val board = GoBoard.fromString(boardString)
+        val state = GameState.newGameWithBoard(board, Player.Black)
+        val extractor = FeatureExtractor(state, Player.White, mapOf(), null)
+
+        val expected = arrayListOf(
+            arrayListOf(10, 10, 10, 5, 6, 7, 8),
+            arrayListOf(10, 10, 10, 4, 5, 6, 7),
+            arrayListOf(10, 10, 10, 3, 10, 10, 10),
+            arrayListOf(10, 10, 10, 2, 1, 0, 1),
+            arrayListOf(4, 3, 4, 3, 2, 1, 2),
+            arrayListOf(3, 2, 10, 10, 3, 2, 3),
+            arrayListOf(2, 1, 0, 1, 2, 3, 4),
+        )
+
+        for (r in 1..7) {
+            for (c in 1..7) {
+                assertEquals(
+                    expected[7 - r][c - 1],
+                    extractor.getSelfAccess(Location.rowColToIdx(r, c))
+                )
+            }
+        }
+    }
 }

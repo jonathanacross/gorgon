@@ -6,6 +6,8 @@ import gorgon.gobase.Player
 import gorgon.gobase.SquareType
 import gorgon.pextract.Pattern
 import gorgon.pextract.PatternExtractor
+import java.util.ArrayDeque
+import java.util.ArrayList
 import kotlin.math.abs
 
 class FeatureExtractor(
@@ -17,6 +19,8 @@ class FeatureExtractor(
     private val capturedStoneCounts = IntArray(Location.numLocs) { 0 }
     private val influenceData = Array(state.board.size, { IntArray(state.board.size) })
     private val saveSelfAtariData: IntArray
+    private val selfAccess: IntArray
+    private val enemyAccess: IntArray
     private val patternExtractor3 = PatternExtractor(3)
     private val patternExtractor5 = PatternExtractor(5)
     private val patternExtractor7 = PatternExtractor(7)
@@ -37,6 +41,8 @@ class FeatureExtractor(
 
         computeInfluence()
         saveSelfAtariData = computeSaveAtariData()
+        selfAccess = generateAccessData(squareType)
+        enemyAccess = generateAccessData(otherSquareType)
     }
 
     private fun computeInfluence() {
@@ -127,6 +133,15 @@ class FeatureExtractor(
         return if (numLiberties == 1) 1 else 0
     }
 
+    fun getSelfLiberties(loc: Int): Int {
+        val nextBoard = state.board.playMove(player, loc).board
+        val squareType = SquareType.playerToSquareType(player)
+        val group = nextBoard.floodfill(loc, { x: Int -> x == squareType })
+        val chain = Chain(loc, group)
+
+        return Utils.getLiberties(nextBoard, chain).size
+    }
+
     fun getEnemyAtari(loc: Int): Int {
         val nextBoard = state.board.playMove(player, loc).board
         val squareType = SquareType.playerToSquareType(player)
@@ -182,6 +197,95 @@ class FeatureExtractor(
         return breakPoints.size + 1
     }
 
+    // e.g., good for opening moves
+    fun getNearCorner(loc: Int): Int {
+        var (r, c) = Location.idxToRowCol(loc)
+
+        // normalize coordinates to the bottom left corner
+        val boardSize = state.board.size
+        if (r > boardSize / 2) {
+            r = boardSize + 1 - r
+        }
+        if (c > boardSize / 2) {
+            c = boardSize + 1 - c
+        }
+
+        return if (
+            (c == 3 && r == 3) ||
+            (c == 3 && r == 4) ||
+            (c == 4 && r == 3) ||
+            (c == 4 && r == 4)
+        ) 1 else 0
+    }
+
+    fun getNearEdge(loc: Int): Int {
+        val (r, c) = Location.idxToRowCol(loc)
+        val boardSize = state.board.size
+        return if (
+            r == 3 || r == 4 || r == boardSize - 2 || r == boardSize - 3 ||
+            c == 3 || c == 4 || c == boardSize - 2 || c == boardSize - 3
+        ) 1 else 0
+    }
+
+    // see https://senseis.xmp.net/?ReflectionsOnRiscIgoByBruceWilcox
+    // Access describes at each point, how many moves would it take to join a
+    // solid string line between the two points assuming you are not allowed
+    // to cross enemy linkages.
+    fun generateAccessData(squareType: Int): IntArray {
+        val maxVal = 99
+        val maxIdx = state.board.data.size
+        val accessData = IntArray(maxIdx) {maxVal}
+
+        // Find list of squares of type squareType
+        val mySquares = ArrayList<Int>()
+        for (i in 0 until maxIdx) {
+            if (state.board.data[i] == squareType) {
+                mySquares.add(i)
+            }
+        }
+
+        // expand outward from known squares
+        val painted = Array(maxIdx) { false }
+        // pair has location, value
+        val searchLocations = ArrayDeque<Pair<Int, Int>>()
+
+        for (i in mySquares) {
+            searchLocations.add(Pair(i, 0))
+            accessData[i] = 0
+            painted[i] = true
+        }
+
+        while (!searchLocations.isEmpty()) {
+            val pixel = searchLocations.removeFirst()
+            val nbrs = state.board.neighbors(pixel.first)
+            for (p in nbrs) {
+                if (!painted[p] && state.board.data[p] == SquareType.Empty) {
+                    searchLocations.add(Pair(p, pixel.second + 1))
+                    accessData[p] = pixel.second + 1
+                    painted[p] = true
+                }
+            }
+        }
+
+        return accessData
+    }
+
+    // actually independent of location
+    fun getGamePhase(): Int {
+        // Define game phase based on worst access of either player
+        // 9+: early opening
+        // 8: mid opening
+        // 7: late opening
+        // 6: early midgame
+        // 5: mid midgame
+        // 4: late midgame
+        // 3: early endgame
+        // 2: mid endgame
+        // 1: late endgame
+        // TODO: implement
+        return 0
+    }
+
     fun isJump(loc: Int, color: Int, dir: Int, numSpaces: Int): Boolean {
         var spaceCount = 0
         var currLoc = loc
@@ -207,13 +311,15 @@ class FeatureExtractor(
         for (len in 0 until numSpaces) {
             currLoc += longDir
             if (state.board.data[currLoc] != SquareType.Empty ||
-                state.board.data[currLoc + shortDir] != SquareType.Empty)  {
+                state.board.data[currLoc + shortDir] != SquareType.Empty
+            ) {
                 return false
             }
             spaceCount++
         }
         if (state.board.data[currLoc + longDir] != SquareType.Empty ||
-            state.board.data[currLoc + longDir + shortDir] != color) {
+            state.board.data[currLoc + longDir + shortDir] != color
+        ) {
             return false
         }
         return true
@@ -273,6 +379,28 @@ class FeatureExtractor(
         return 0
     }
 
+    fun getSelfAccess(loc: Int) : Int {
+        val access = selfAccess[loc]
+        return if (access >= 99) {
+            10
+        } else if (access >= 9) {
+            9
+        } else {
+            access
+        }
+    }
+
+    fun getEnemyAccess(loc: Int) : Int {
+        val access = enemyAccess[loc]
+        return if (access >= 99) {
+            10
+        } else if (access >= 9) {
+            9
+        } else {
+            access
+        }
+    }
+
     // Use for debugging only
     fun getFeature(featureName: String, loc: Int, dieIfUnknown: Boolean): Int {
         return when (featureName) {
@@ -285,6 +413,10 @@ class FeatureExtractor(
             "distToLastMove" -> getDistToLastMove(loc)
             "pattern" -> getPattern(loc)
             "jumps" -> getJumps(loc)
+            "nearCorner" -> getNearCorner(loc)
+            "nearEdge" -> getNearEdge(loc)
+            "selfAccess" -> getSelfAccess(loc)
+            "enemyAccess" -> getEnemyAccess(loc)
             else -> {
                 if (dieIfUnknown) {
                     throw Exception("tried to get unknown feature '" + featureName + "'")

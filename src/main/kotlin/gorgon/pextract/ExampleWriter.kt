@@ -21,6 +21,7 @@ data class Example(val label: Int, val nonZeroFeatures: List<FeatureIdxAndValue>
 class ExampleWriter(features: List<Feature>, private val featureMapFileName: String, private val examplesFileName: String) {
 
     private val patternData: Map<Pattern, Int> = PatternReader.readPatternFile()
+    private val rng = Random()
 
     data class FeatNameValueIdx(val name: String, val value: Int, val idx: Int)
     private val featureNameToValueToIdx : Map<String, Map<Int, Int>>
@@ -38,6 +39,59 @@ class ExampleWriter(features: List<Feature>, private val featureMapFileName: Str
                 for ((value, idx) in valueIdx) {
                     out.println(name + "\t" + value + "\t" + idx)
                 }
+            }
+        }
+    }
+
+    fun writeFeaturesForGameWithRandomPositionSample(game: PlayedGame) {
+        val examples = ArrayList<Example>()
+        try {
+            // set up initial position
+            var b = GoBoard.emptyBoard(game.boardSize)
+            for (loc in game.addedBlack) {
+                b = b.putStone(Player.Black, loc)
+            }
+            for (loc in game.addedWhite) {
+                b = b.putStone(Player.White, loc)
+            }
+
+            if (game.moves.size == 0) {
+                // empty game, nothing to extract
+                return
+            }
+            val moveToRecord = rng.nextInt(game.moves.size)
+
+            // Play out the game
+            var state = GameState.newGameWithBoard(b, Player.White)
+            for ((moveNumber, move) in game.moves.withIndex()) {
+                if (moveNumber == moveToRecord) {
+                    val featureExtractor = FeatureExtractor(state, move.player, patternData, null)
+                    for (loc in state.board.legalMoves(move.player)) {
+                        val label = if (loc == move.square) 1 else 0
+                        val fValues = ArrayList<FeatureIdxAndValue>()
+                        for ((name, valueToIdx) in featureNameToValueToIdx) {
+                            val value = featureExtractor.getFeature(name, loc, true)
+                            if (value == 0) {
+                                continue
+                            }
+                            val idx = valueToIdx[value]!!
+                            fValues.add(FeatureIdxAndValue(idx, 1))
+                        }
+                        val example = Example(label, fValues)
+                        examples.add(example)
+                    }
+                    // don't need to keep doing the moves for this game
+                    break
+                }
+
+                state = state.playMove(move.player, move.square)
+            }
+        } catch (e: Exception) {
+            println("Warning: problem analyzing game " + game.fileName + "   " + e.toString())
+        }
+        FileOutputStream(examplesFileName, true).bufferedWriter().use { writer ->
+            for (example in examples) {
+                writer.appendLine(example.toString())
             }
         }
     }
@@ -92,9 +146,9 @@ class ExampleWriter(features: List<Feature>, private val featureMapFileName: Str
 fun main(args: Array<String>) {
     // These could be made into arguments.
     val featureListFile = "/home/jonathan/Development/gorgon/data/feature_list.txt"
-    //val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
+    val gamesDir = "/home/jonathan/Development/gorgon/data/games/"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Chisato/"
-    val gamesDir = "/home/jonathan/Development/gorgon/data/games/Takagawa/"
+    //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Takagawa/"
     //val gamesDir = "/home/jonathan/Development/gorgon/data/games/Masters/"
 
     val features = FeatureReader.readFeatureFile(featureListFile)
@@ -117,7 +171,8 @@ fun main(args: Array<String>) {
         if (count % 10 == 0) {
             println("processing " + count + " of " + games.size)
         }
-        exampleWriter.writeFeaturesForGame(game)
+        //exampleWriter.writeFeaturesForGame(game)
+        exampleWriter.writeFeaturesForGameWithRandomPositionSample(game)
     }
 
     println("Wrote mapping to " + featureMapFileName)

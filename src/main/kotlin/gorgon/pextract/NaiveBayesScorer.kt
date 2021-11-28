@@ -33,7 +33,19 @@ class FeatureReader {
     }
 }
 
-class NaiveBayesScorer(features: List<Feature>) {
+//data class IndexedFeatureAndWeight(val fIdx: Int, val weight: Int)
+//data class TrainingExample(val label: Int, val features: List<IndexedFeatureAndWeight>)
+//class ExampleReader {
+//    companion object {
+//        private fun parseLine(line: String): TrainingExample {
+//            val fields = line.split("\\s")
+//            val label = fields[0].toInt()
+//            val
+//        }
+//    }
+//}
+
+class NaiveBayesScorerUsingGames(features: List<Feature>) {
     private val patternData: Map<Pattern, Int> = PatternReader.readPatternFile()
     val featureNameToValueToFreqs = HashMap<String, HashMap<Int, Freq>>()
     val bias = Freq(0, 0)
@@ -101,7 +113,7 @@ fun main(args: Array<String>) {
 
     val features = FeatureReader.readFeatureFile(featureListFile)
     val games = readGames(gamesDir)
-    val nbScorer = NaiveBayesScorer(features)
+    val nbScorer = NaiveBayesScorerUsingGames(features)
 
     var count = 0
     for (game in games) {

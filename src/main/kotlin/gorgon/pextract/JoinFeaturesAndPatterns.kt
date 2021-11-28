@@ -44,10 +44,11 @@ fun readFeatureFile(fileName: String): List<FeatureData> {
         val name = fields[0]
         val value = fields[1].toInt()
         val weight = fields[2]
-        val wins = fields[3]
-        val losses = fields[4]
+//        val wins = fields[3]
+//        val losses = fields[4]
 
-        featureData.add(FeatureData(name, value, weight, wins, losses))
+        featureData.add(FeatureData(name, value, weight, "", ""))
+        //featureData.add(FeatureData(name, value, weight, wins, losses))
     }
 
     return featureData
